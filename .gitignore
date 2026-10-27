@@ -8,9 +8,16 @@ export/
 *.aab
 *.ipa
 
+# Android Gradle build template (Play Store .aab builds)
+/android/
+
 # Signing
 *.keystore
 *.jks
 
-# OS
+# OS and editors
 .DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.tmp
