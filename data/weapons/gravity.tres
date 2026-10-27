@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="WeaponDef" format=3]
+
+[ext_resource type="Script" path="res://src/core/weapon_def.gd" id="1_def"]
+[ext_resource type="Texture2D" path="res://assets/art/weapons/grenade-b.png" id="2_tex"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"gravity"
+texture = ExtResource("2_tex")
+display_name = "Gravity Grenade"
+kind = 2
+glow_color = Color(0.6, 0.5, 1, 1)
+spawn_weight = 1.4
+sprite_size = 56.0
+legendary = false
+ammo = 2
+fire_cooldown = 0.6
+projectile_kind = &"gravity"
+projectile_speed = 1050.0
+projectile_lifetime = 0.7
+projectile_radius = 12.0
+effect_radius = 480.0
+effect_strength = 2600.0
+effect_time = 3.0
+tint = Color(0.75, 0.65, 1, 1)

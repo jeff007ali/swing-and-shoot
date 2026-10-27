@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ModeDef" format=3]
+
+[ext_resource type="Script" path="res://src/core/mode_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"tutorial"
+display_name = "Tutorial"
+short_name = "TUTORIAL"
+description = "Learn the rope, the cling, the slingshot and the pull-and-punch."
+rule = &"tutorial"
+sort_order = 99
+players = 2
+score_target = 0
+time_limit = 0.0
+weapon_spawns = true
+challenges = Array[StringName]([&"tut_01_rope", &"tut_02_kick", &"tut_03_orbit", &"tut_04_slingshot", &"tut_05_pull", &"tut_06_combo", &"tut_07_weapon", &"tut_08_fire"])
+offline = false
+lan = false

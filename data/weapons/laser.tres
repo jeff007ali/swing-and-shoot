@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="WeaponDef" format=3]
+
+[ext_resource type="Script" path="res://src/core/weapon_def.gd" id="1_def"]
+[ext_resource type="Texture2D" path="res://assets/art/weapons/blaster-d.png" id="2_tex"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"laser"
+texture = ExtResource("2_tex")
+display_name = "Bouncing Laser"
+kind = 2
+glow_color = Color(0.95, 0.35, 1, 1)
+spawn_weight = 2.0
+sprite_size = 72.0
+legendary = false
+ammo = 6
+fire_cooldown = 0.4
+projectile_kind = &"laser"
+recoil_impulse = 150.0
+projectile_speed = 2400.0
+projectile_damage = 11.0
+projectile_knockback = 380.0
+projectile_lifetime = 1.4
+projectile_radius = 6.0
+projectile_color = Color(1, 0.4, 1, 1)
+bounces = 3

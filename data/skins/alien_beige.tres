@@ -1,0 +1,89 @@
+[gd_resource type="Resource" script_class="SkinDef" format=3]
+
+[ext_resource type="Texture2D" path="res://assets/art/atlas/characters/hook.tres" id="1_utrk7"]
+[ext_resource type="Texture2D" path="res://assets/art/fx/rope_tile.png" id="2_n67x0"]
+[ext_resource type="Script" path="res://src/core/skin_def.gd" id="3_d7osd"]
+[ext_resource type="Texture2D" path="res://assets/art/atlas/characters/character_beige_duck.tres" id="4_trhux"]
+[ext_resource type="Texture2D" path="res://assets/art/atlas/characters/character_beige_idle.tres" id="5_ti8s7"]
+[ext_resource type="Texture2D" path="res://assets/art/atlas/characters/character_beige_hit.tres" id="6_fwr2h"]
+[ext_resource type="Texture2D" path="res://assets/art/atlas/characters/character_beige_jump.tres" id="7_5i4jy"]
+[ext_resource type="Texture2D" path="res://assets/art/atlas/characters/character_beige_front.tres" id="8_eooxr"]
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_pxprf"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("4_trhux")
+}],
+"loop": 1,
+"name": &"cling",
+"speed": 6.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("5_ti8s7")
+}],
+"loop": 1,
+"name": &"float",
+"speed": 6.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("6_fwr2h")
+}],
+"loop": 1,
+"name": &"hurt",
+"speed": 6.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("7_5i4jy")
+}],
+"loop": 1,
+"name": &"kick",
+"speed": 6.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("6_fwr2h")
+}, {
+"duration": 1.0,
+"texture": ExtResource("4_trhux")
+}],
+"loop": 0,
+"name": &"ko",
+"speed": 6.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("8_eooxr")
+}, {
+"duration": 1.0,
+"texture": ExtResource("7_5i4jy")
+}, {
+"duration": 1.0,
+"texture": ExtResource("5_ti8s7")
+}],
+"loop": 0,
+"name": &"melee",
+"speed": 20.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("7_5i4jy")
+}],
+"loop": 1,
+"name": &"reel",
+"speed": 6.0
+}]
+
+[resource]
+script = ExtResource("3_d7osd")
+id = &"alien_beige"
+display_name = "Beige"
+sprite_frames = SubResource("SpriteFrames_pxprf")
+rope_color = Color(0.9098039, 0.827451, 0.6901961, 1)
+hook_color = Color(1, 0.95686275, 0.8862745, 1)
+trail_color = Color(0.91, 0.83, 0.69, 0.55)
+hook_texture = ExtResource("1_utrk7")
+rope_texture = ExtResource("2_n67x0")

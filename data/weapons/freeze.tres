@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="WeaponDef" format=3]
+
+[ext_resource type="Script" path="res://src/core/weapon_def.gd" id="1_def"]
+[ext_resource type="Texture2D" path="res://assets/art/weapons/blaster-o.png" id="2_tex"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"freeze"
+texture = ExtResource("2_tex")
+display_name = "Freeze Ray"
+kind = 2
+glow_color = Color(0.45, 0.9, 1, 1)
+spawn_weight = 1.6
+sprite_size = 72.0
+legendary = false
+ammo = 3
+fire_cooldown = 0.7
+projectile_kind = &"freeze"
+recoil_impulse = 120.0
+projectile_speed = 1800.0
+projectile_damage = 4.0
+projectile_lifetime = 0.8
+projectile_radius = 10.0
+effect_time = 3.0
+projectile_color = Color(0.6, 0.95, 1, 1)

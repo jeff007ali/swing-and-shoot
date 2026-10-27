@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="WeaponDef" format=3]
+
+[ext_resource type="Script" path="res://src/core/weapon_def.gd" id="1_def"]
+[ext_resource type="Texture2D" path="res://assets/art/weapons/blaster-l.png" id="2_tex"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"repulsor"
+texture = ExtResource("2_tex")
+display_name = "Repulsor Blast"
+kind = 2
+glow_color = Color(0.4, 1, 0.8, 1)
+spawn_weight = 1.6
+sprite_size = 72.0
+legendary = false
+ammo = 3
+fire_cooldown = 0.8
+projectile_kind = &"repulsor"
+projectile_damage = 6.0
+effect_radius = 380.0
+effect_strength = 1700.0

@@ -1,0 +1,489 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/arenas/arena_base.gd" id="1_6stby"]
+[ext_resource type="Texture2D" path="res://assets/art/arena/purple.png" id="2_tr0tw"]
+[ext_resource type="Script" path="res://src/arenas/starfield.gd" id="3_q3qsy"]
+[ext_resource type="Script" path="res://src/sim/arena_object.gd" id="4_qi8v1"]
+[ext_resource type="Texture2D" path="res://assets/art/arena/spaceStation_003.png" id="5_lnuxn"]
+[ext_resource type="Texture2D" path="res://assets/art/arena/spaceBuilding_006.png" id="6_k64f5"]
+[ext_resource type="Texture2D" path="res://assets/art/atlas/arena/spaceMeteors_001.tres" id="7_snmo3"]
+[ext_resource type="Texture2D" path="res://assets/art/atlas/arena/spaceMeteors_002.tres" id="8_ig27i"]
+[ext_resource type="Texture2D" path="res://assets/art/atlas/arena/spaceMeteors_003.tres" id="9_x5j56"]
+[ext_resource type="Texture2D" path="res://assets/art/atlas/arena/spaceMeteors_004.tres" id="10_e7oqp"]
+[ext_resource type="Script" path="res://src/sim/drifting_body.gd" id="11_b3bj3"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_70pst"]
+size = Vector2(3600, 40)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_af1k4"]
+size = Vector2(3600, 40)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_r3nsn"]
+size = Vector2(40, 2000)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_x8a5n"]
+size = Vector2(40, 2000)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_hn858"]
+size = Vector2(560, 50)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_mew84"]
+size = Vector2(560, 50)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_31qi7"]
+size = Vector2(560, 50)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_cpecq"]
+size = Vector2(560, 50)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_hgbrp"]
+size = Vector2(260, 260)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_srq8g"]
+size = Vector2(200, 80)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_rx1s8"]
+size = Vector2(200, 80)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_3qo2n"]
+size = Vector2(300, 60)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_f35l1"]
+size = Vector2(300, 60)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_tcbci"]
+size = Vector2(60, 240)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_vxypx"]
+size = Vector2(60, 240)
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_jffd8"]
+radius = 50.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_1qbqb"]
+radius = 50.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_3ytw2"]
+radius = 45.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_wosw8"]
+radius = 45.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_fxyk1"]
+radius = 40.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_pb4hu"]
+radius = 40.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_7lcwj"]
+radius = 36.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_7bc1q"]
+radius = 36.0
+
+[node name="Arena06Solar" type="Node2D" unique_id=561503205]
+script = ExtResource("1_6stby")
+arena_name = "Solar Platform"
+bounds = Rect2(0, 0, 3600, 2000)
+events = Array[StringName]([&"closing_walls", &"debris_storm"])
+theme = &"solar"
+
+[node name="Background" type="Sprite2D" parent="." unique_id=1395351905]
+texture_repeat = 2
+position = Vector2(1800, 1000)
+texture = ExtResource("2_tr0tw")
+region_enabled = true
+region_rect = Rect2(0, 0, 5200, 2800)
+
+[node name="Starfield" type="Node2D" parent="." unique_id=2020823735]
+script = ExtResource("3_q3qsy")
+
+[node name="Hazards" type="Node2D" parent="." unique_id=769967244]
+
+[node name="Walls" type="Node2D" parent="." unique_id=23611481]
+
+[node name="Top0" type="StaticBody2D" parent="Walls" unique_id=1452181325]
+modulate = Color(1, 0.85, 0.6, 1)
+position = Vector2(1800, 20)
+script = ExtResource("4_qi8v1")
+surface_type = &"electric"
+panel_texture = ExtResource("5_lnuxn")
+panel_margin = 10.0
+tile_panel = true
+
+[node name="Shape" type="CollisionShape2D" parent="Walls/Top0" unique_id=1980011258]
+shape = SubResource("RectangleShape2D_70pst")
+
+[node name="Bottom0" type="StaticBody2D" parent="Walls" unique_id=520341440]
+modulate = Color(1, 0.85, 0.6, 1)
+position = Vector2(1800, 1980)
+script = ExtResource("4_qi8v1")
+surface_type = &"electric"
+panel_texture = ExtResource("5_lnuxn")
+panel_margin = 10.0
+tile_panel = true
+
+[node name="Shape" type="CollisionShape2D" parent="Walls/Bottom0" unique_id=708442616]
+shape = SubResource("RectangleShape2D_af1k4")
+
+[node name="Left0" type="StaticBody2D" parent="Walls" unique_id=46654078]
+modulate = Color(1, 0.85, 0.6, 1)
+position = Vector2(20, 1000)
+script = ExtResource("4_qi8v1")
+surface_type = &"electric"
+panel_texture = ExtResource("5_lnuxn")
+panel_margin = 10.0
+tile_panel = true
+
+[node name="Shape" type="CollisionShape2D" parent="Walls/Left0" unique_id=1911107978]
+shape = SubResource("RectangleShape2D_r3nsn")
+
+[node name="Right0" type="StaticBody2D" parent="Walls" unique_id=1253592582]
+modulate = Color(1, 0.85, 0.6, 1)
+position = Vector2(3580, 1000)
+script = ExtResource("4_qi8v1")
+surface_type = &"electric"
+panel_texture = ExtResource("5_lnuxn")
+panel_margin = 10.0
+tile_panel = true
+
+[node name="Shape" type="CollisionShape2D" parent="Walls/Right0" unique_id=1074896116]
+shape = SubResource("RectangleShape2D_x8a5n")
+
+[node name="Obstacles" type="Node2D" parent="." unique_id=1296262298]
+
+[node name="Box1" type="StaticBody2D" parent="Obstacles" unique_id=1349371465]
+modulate = Color(1, 0.85, 0.6, 1)
+position = Vector2(1000, 500)
+script = ExtResource("4_qi8v1")
+surface_type = &"smooth"
+panel_texture = ExtResource("6_k64f5")
+panel_margin = 22.0
+
+[node name="Shape" type="CollisionShape2D" parent="Obstacles/Box1" unique_id=2130233587]
+shape = SubResource("RectangleShape2D_hn858")
+
+[node name="Box2" type="StaticBody2D" parent="Obstacles" unique_id=1962408126]
+modulate = Color(1, 0.85, 0.6, 1)
+position = Vector2(2600, 500)
+script = ExtResource("4_qi8v1")
+surface_type = &"smooth"
+panel_texture = ExtResource("6_k64f5")
+panel_margin = 22.0
+
+[node name="Shape" type="CollisionShape2D" parent="Obstacles/Box2" unique_id=1156347883]
+shape = SubResource("RectangleShape2D_mew84")
+
+[node name="Box3" type="StaticBody2D" parent="Obstacles" unique_id=1318253809]
+modulate = Color(1, 0.85, 0.6, 1)
+position = Vector2(1000, 1500)
+script = ExtResource("4_qi8v1")
+surface_type = &"smooth"
+panel_texture = ExtResource("6_k64f5")
+panel_margin = 22.0
+
+[node name="Shape" type="CollisionShape2D" parent="Obstacles/Box3" unique_id=1649035614]
+shape = SubResource("RectangleShape2D_31qi7")
+
+[node name="Box4" type="StaticBody2D" parent="Obstacles" unique_id=1540332382]
+modulate = Color(1, 0.85, 0.6, 1)
+position = Vector2(2600, 1500)
+script = ExtResource("4_qi8v1")
+surface_type = &"smooth"
+panel_texture = ExtResource("6_k64f5")
+panel_margin = 22.0
+
+[node name="Shape" type="CollisionShape2D" parent="Obstacles/Box4" unique_id=678447995]
+shape = SubResource("RectangleShape2D_cpecq")
+
+[node name="Box5" type="StaticBody2D" parent="Obstacles" unique_id=303974310]
+modulate = Color(1, 0.85, 0.6, 1)
+position = Vector2(1800, 1000)
+script = ExtResource("4_qi8v1")
+panel_texture = ExtResource("6_k64f5")
+panel_margin = 22.0
+
+[node name="Shape" type="CollisionShape2D" parent="Obstacles/Box5" unique_id=1892866510]
+shape = SubResource("RectangleShape2D_hgbrp")
+
+[node name="Box6" type="StaticBody2D" parent="Obstacles" unique_id=1047542782]
+modulate = Color(1, 0.85, 0.6, 1)
+position = Vector2(600, 1000)
+script = ExtResource("4_qi8v1")
+panel_texture = ExtResource("6_k64f5")
+panel_margin = 22.0
+
+[node name="Shape" type="CollisionShape2D" parent="Obstacles/Box6" unique_id=53197398]
+shape = SubResource("RectangleShape2D_srq8g")
+
+[node name="Box7" type="StaticBody2D" parent="Obstacles" unique_id=2096126800]
+modulate = Color(1, 0.85, 0.6, 1)
+position = Vector2(3000, 1000)
+script = ExtResource("4_qi8v1")
+panel_texture = ExtResource("6_k64f5")
+panel_margin = 22.0
+
+[node name="Shape" type="CollisionShape2D" parent="Obstacles/Box7" unique_id=314068745]
+shape = SubResource("RectangleShape2D_rx1s8")
+
+[node name="Box8" type="StaticBody2D" parent="Obstacles" unique_id=1877003961]
+modulate = Color(1, 0.85, 0.6, 1)
+position = Vector2(1800, 300)
+script = ExtResource("4_qi8v1")
+panel_texture = ExtResource("6_k64f5")
+panel_margin = 22.0
+
+[node name="Shape" type="CollisionShape2D" parent="Obstacles/Box8" unique_id=436989673]
+shape = SubResource("RectangleShape2D_3qo2n")
+
+[node name="Box9" type="StaticBody2D" parent="Obstacles" unique_id=570810473]
+modulate = Color(1, 0.85, 0.6, 1)
+position = Vector2(1800, 1700)
+script = ExtResource("4_qi8v1")
+panel_texture = ExtResource("6_k64f5")
+panel_margin = 22.0
+
+[node name="Shape" type="CollisionShape2D" parent="Obstacles/Box9" unique_id=1881629776]
+shape = SubResource("RectangleShape2D_f35l1")
+
+[node name="Box10" type="StaticBody2D" parent="Obstacles" unique_id=1046932027]
+modulate = Color(1, 0.85, 0.6, 1)
+position = Vector2(250, 1650)
+script = ExtResource("4_qi8v1")
+panel_texture = ExtResource("6_k64f5")
+panel_margin = 22.0
+
+[node name="Shape" type="CollisionShape2D" parent="Obstacles/Box10" unique_id=2099576066]
+shape = SubResource("RectangleShape2D_tcbci")
+
+[node name="Box11" type="StaticBody2D" parent="Obstacles" unique_id=281688035]
+modulate = Color(1, 0.85, 0.6, 1)
+position = Vector2(3350, 350)
+script = ExtResource("4_qi8v1")
+panel_texture = ExtResource("6_k64f5")
+panel_margin = 22.0
+
+[node name="Shape" type="CollisionShape2D" parent="Obstacles/Box11" unique_id=502293486]
+shape = SubResource("RectangleShape2D_vxypx")
+
+[node name="Asteroid1" type="StaticBody2D" parent="Obstacles" unique_id=523919571]
+position = Vector2(1200, 1000)
+script = ExtResource("4_qi8v1")
+orbit_pivot = true
+draw_shapes = false
+
+[node name="Shape" type="CollisionShape2D" parent="Obstacles/Asteroid1" unique_id=427067964]
+shape = SubResource("CircleShape2D_jffd8")
+
+[node name="Art" type="Sprite2D" parent="Obstacles/Asteroid1" unique_id=23196350]
+rotation = 3.7504442
+scale = Vector2(0.49302325, 0.49302325)
+texture = ExtResource("7_snmo3")
+
+[node name="Asteroid2" type="StaticBody2D" parent="Obstacles" unique_id=1244394179]
+position = Vector2(2400, 1000)
+script = ExtResource("4_qi8v1")
+orbit_pivot = true
+draw_shapes = false
+
+[node name="Shape" type="CollisionShape2D" parent="Obstacles/Asteroid2" unique_id=1465024982]
+shape = SubResource("CircleShape2D_1qbqb")
+
+[node name="Art" type="Sprite2D" parent="Obstacles/Asteroid2" unique_id=760434808]
+rotation = 0.50088817
+scale = Vector2(0.5, 0.5)
+texture = ExtResource("8_ig27i")
+
+[node name="Asteroid3" type="StaticBody2D" parent="Obstacles" unique_id=1657117874]
+position = Vector2(400, 600)
+script = ExtResource("4_qi8v1")
+orbit_pivot = true
+draw_shapes = false
+
+[node name="Shape" type="CollisionShape2D" parent="Obstacles/Asteroid3" unique_id=1921050003]
+shape = SubResource("CircleShape2D_3ytw2")
+
+[node name="Art" type="Sprite2D" parent="Obstacles/Asteroid3" unique_id=690755972]
+rotation = 3.1168146
+scale = Vector2(0.4457944, 0.4457944)
+texture = ExtResource("9_x5j56")
+
+[node name="Asteroid4" type="StaticBody2D" parent="Obstacles" unique_id=1828547611]
+position = Vector2(3200, 1400)
+script = ExtResource("4_qi8v1")
+orbit_pivot = true
+draw_shapes = false
+
+[node name="Shape" type="CollisionShape2D" parent="Obstacles/Asteroid4" unique_id=1176748371]
+shape = SubResource("CircleShape2D_wosw8")
+
+[node name="Art" type="Sprite2D" parent="Obstacles/Asteroid4" unique_id=1649000015]
+rotation = 1.1345176
+scale = Vector2(0.43363637, 0.43363637)
+texture = ExtResource("10_e7oqp")
+
+[node name="Drifter1" type="StaticBody2D" parent="Obstacles" unique_id=1380776022]
+position = Vector2(2500, 1000)
+script = ExtResource("11_b3bj3")
+orbit_center = Vector2(1800, 1000)
+orbit_radii = Vector2(700, 520)
+period = 26.0
+orbit_pivot = true
+draw_shapes = false
+
+[node name="Shape" type="CollisionShape2D" parent="Obstacles/Drifter1" unique_id=905787748]
+shape = SubResource("CircleShape2D_fxyk1")
+
+[node name="Art" type="Sprite2D" parent="Obstacles/Drifter1" unique_id=1293596801]
+rotation = 1.8008882
+scale = Vector2(0.3962617, 0.3962617)
+texture = ExtResource("9_x5j56")
+
+[node name="Drifter2" type="StaticBody2D" parent="Obstacles" unique_id=1847362253]
+position = Vector2(1100, 1000)
+script = ExtResource("11_b3bj3")
+orbit_center = Vector2(1800, 1000)
+orbit_radii = Vector2(700, 520)
+period = 26.0
+phase = 3.141592653589793
+orbit_pivot = true
+draw_shapes = false
+
+[node name="Shape" type="CollisionShape2D" parent="Obstacles/Drifter2" unique_id=560696982]
+shape = SubResource("CircleShape2D_pb4hu")
+
+[node name="Art" type="Sprite2D" parent="Obstacles/Drifter2" unique_id=447737962]
+rotation = 2.450444
+scale = Vector2(0.38545454, 0.38545454)
+texture = ExtResource("10_e7oqp")
+
+[node name="Tank1" type="StaticBody2D" parent="Obstacles" unique_id=489111330]
+position = Vector2(1450, 700)
+script = ExtResource("4_qi8v1")
+explosive = true
+fill_color = Color(0.75, 0.12, 0.08, 1)
+border_color = Color(1, 0.85, 0.15, 1)
+
+[node name="Shape" type="CollisionShape2D" parent="Obstacles/Tank1" unique_id=661921396]
+shape = SubResource("CircleShape2D_7lcwj")
+
+[node name="Tank2" type="StaticBody2D" parent="Obstacles" unique_id=1648846460]
+position = Vector2(2150, 1300)
+script = ExtResource("4_qi8v1")
+explosive = true
+fill_color = Color(0.75, 0.12, 0.08, 1)
+border_color = Color(1, 0.85, 0.15, 1)
+
+[node name="Shape" type="CollisionShape2D" parent="Obstacles/Tank2" unique_id=2035397859]
+shape = SubResource("CircleShape2D_7bc1q")
+
+[node name="SpawnPoints" type="Node2D" parent="." unique_id=568619522]
+
+[node name="Spawn1" type="Marker2D" parent="SpawnPoints" unique_id=813801652]
+position = Vector2(350, 350)
+
+[node name="Spawn2" type="Marker2D" parent="SpawnPoints" unique_id=891900425]
+position = Vector2(3250, 350)
+
+[node name="Spawn3" type="Marker2D" parent="SpawnPoints" unique_id=1882847276]
+position = Vector2(350, 1650)
+
+[node name="Spawn4" type="Marker2D" parent="SpawnPoints" unique_id=1733420063]
+position = Vector2(3250, 1650)
+
+[node name="WeaponSpawns" type="Node2D" parent="." unique_id=833358865]
+
+[node name="Weapon1" type="Marker2D" parent="WeaponSpawns" unique_id=799368466]
+position = Vector2(1800, 1000)
+
+[node name="Weapon2" type="Marker2D" parent="WeaponSpawns" unique_id=1472457462]
+position = Vector2(1000, 600)
+
+[node name="Weapon3" type="Marker2D" parent="WeaponSpawns" unique_id=1410517222]
+position = Vector2(2600, 1400)
+
+[node name="Weapon4" type="Marker2D" parent="WeaponSpawns" unique_id=541928565]
+position = Vector2(1000, 1400)
+
+[node name="Weapon5" type="Marker2D" parent="WeaponSpawns" unique_id=550780454]
+position = Vector2(2600, 600)
+
+[node name="BotAnchors" type="Node2D" parent="." unique_id=858282758]
+
+[node name="Anchor1" type="Marker2D" parent="BotAnchors" unique_id=298743421]
+position = Vector2(1800, 870)
+
+[node name="Anchor2" type="Marker2D" parent="BotAnchors" unique_id=2134507634]
+position = Vector2(1800, 1130)
+
+[node name="Anchor3" type="Marker2D" parent="BotAnchors" unique_id=716942725]
+position = Vector2(600, 960)
+
+[node name="Anchor4" type="Marker2D" parent="BotAnchors" unique_id=1306201028]
+position = Vector2(600, 1040)
+
+[node name="Anchor5" type="Marker2D" parent="BotAnchors" unique_id=557250830]
+position = Vector2(3000, 960)
+
+[node name="Anchor6" type="Marker2D" parent="BotAnchors" unique_id=1140554342]
+position = Vector2(3000, 1040)
+
+[node name="Anchor7" type="Marker2D" parent="BotAnchors" unique_id=778526538]
+position = Vector2(1800, 270)
+
+[node name="Anchor8" type="Marker2D" parent="BotAnchors" unique_id=39421693]
+position = Vector2(1800, 330)
+
+[node name="Anchor9" type="Marker2D" parent="BotAnchors" unique_id=912668266]
+position = Vector2(1800, 1670)
+
+[node name="Anchor10" type="Marker2D" parent="BotAnchors" unique_id=805871272]
+position = Vector2(1800, 1730)
+
+[node name="Anchor11" type="Marker2D" parent="BotAnchors" unique_id=162001548]
+position = Vector2(220, 1650)
+
+[node name="Anchor12" type="Marker2D" parent="BotAnchors" unique_id=559120763]
+position = Vector2(280, 1650)
+
+[node name="Anchor13" type="Marker2D" parent="BotAnchors" unique_id=1172972259]
+position = Vector2(3320, 350)
+
+[node name="Anchor14" type="Marker2D" parent="BotAnchors" unique_id=502331635]
+position = Vector2(3380, 350)
+
+[node name="Anchor15" type="Marker2D" parent="BotAnchors" unique_id=1079619890]
+position = Vector2(1150, 1000)
+
+[node name="Anchor16" type="Marker2D" parent="BotAnchors" unique_id=392182996]
+position = Vector2(1250, 1000)
+
+[node name="Anchor17" type="Marker2D" parent="BotAnchors" unique_id=1590742625]
+position = Vector2(2350, 1000)
+
+[node name="Anchor18" type="Marker2D" parent="BotAnchors" unique_id=1628964407]
+position = Vector2(2450, 1000)
+
+[node name="Anchor19" type="Marker2D" parent="BotAnchors" unique_id=1696266963]
+position = Vector2(355, 600)
+
+[node name="Anchor20" type="Marker2D" parent="BotAnchors" unique_id=1578617786]
+position = Vector2(445, 600)
+
+[node name="Anchor21" type="Marker2D" parent="BotAnchors" unique_id=957487950]
+position = Vector2(3155, 1400)
+
+[node name="Anchor22" type="Marker2D" parent="BotAnchors" unique_id=1333093464]
+position = Vector2(3245, 1400)
+
+[node name="Anchor23" type="Marker2D" parent="BotAnchors" unique_id=1362652602]
+position = Vector2(1414, 700)
+
+[node name="Anchor24" type="Marker2D" parent="BotAnchors" unique_id=834940236]
+position = Vector2(1486, 700)
+
+[node name="Anchor25" type="Marker2D" parent="BotAnchors" unique_id=888250522]
+position = Vector2(2114, 1300)
+
+[node name="Anchor26" type="Marker2D" parent="BotAnchors" unique_id=695362075]
+position = Vector2(2186, 1300)

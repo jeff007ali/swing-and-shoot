@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ModeDef" format=3]
+
+[ext_resource type="Script" path="res://src/core/mode_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"gun_game"
+display_name = "Gun Game"
+short_name = "GUN GAME"
+description = "Every KO moves you to the next weapon. The final KO must be a punch."
+rule = &"gun_game"
+sort_order = 6
+players = 4
+team_count = 0
+score_target = 0
+time_limit = 300.0
+weapon_spawns = false
+weapon_sequence = Array[StringName]([&"pistol", &"shotgun", &"laser", &"rocket", &"freeze", &"boomerang", &"sword"])
+lan = true

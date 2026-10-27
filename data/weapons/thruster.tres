@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="WeaponDef" format=3]
+
+[ext_resource type="Script" path="res://src/core/weapon_def.gd" id="1_def"]
+[ext_resource type="Texture2D" path="res://assets/art/weapons/blaster-r.png" id="2_tex"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"thruster"
+texture = ExtResource("2_tex")
+display_name = "Thruster Pack"
+kind = 2
+glow_color = Color(0.4, 0.85, 1, 1)
+spawn_weight = 1.2
+sprite_size = 72.0
+legendary = false
+ammo = 1
+fire_cooldown = 0.3
+projectile_kind = &"thruster"
+effect_strength = 2600.0
+effect_time = 7.0

@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="WeaponDef" format=3]
+
+[ext_resource type="Script" path="res://src/core/weapon_def.gd" id="1_def"]
+[ext_resource type="Texture2D" path="res://assets/art/weapons/blaster-b.png" id="2_tex"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"shotgun"
+texture = ExtResource("2_tex")
+display_name = "Shotgun"
+kind = 0
+glow_color = Color(1, 0.55, 0.3, 1)
+spawn_weight = 3.0
+ammo = 4
+fire_cooldown = 0.75
+recoil_impulse = 700.0
+projectile_count = 6
+spread_deg = 30.0
+projectile_speed = 1900.0
+projectile_damage = 6.0
+projectile_knockback = 260.0
+projectile_lifetime = 0.35
+projectile_radius = 5.0
+projectile_color = Color(1, 0.65, 0.3, 1)

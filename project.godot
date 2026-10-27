@@ -1,0 +1,74 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
+config_version=5
+
+[application]
+
+config/name="Swing and Shoot"
+config/version="0.1.0"
+run/main_scene="res://src/ui/main_menu.tscn"
+config/features=PackedStringArray("4.7", "GL Compatibility")
+config/icon="res://icon.png"
+run/low_processor_mode=false
+config/quit_on_go_back=false
+
+[audio]
+
+buses/default_bus_layout="res://default_bus_layout.tres"
+
+[autoload]
+
+GameEvents="*res://src/autoload/game_events.gd"
+TuningDB="*res://src/autoload/tuning_db.gd"
+Settings="*res://src/autoload/settings.gd"
+Haptics="*res://src/autoload/haptics.gd"
+Sfx="*res://src/autoload/sfx.gd"
+ProfileStore="*res://src/autoload/profile_store.gd"
+Net="*res://src/net/net_session.gd"
+Store="*res://src/autoload/store.gd"
+
+[display]
+
+window/size/viewport_width=1920
+window/size/viewport_height=1080
+window/size/window_width_override=1600
+window/size/window_height_override=900
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+window/handheld/orientation=4
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/gut/plugin.cfg")
+
+[input_devices]
+
+pointing/emulate_touch_from_mouse=true
+
+[layer_names]
+
+2d_physics/layer_1="world_hookable"
+2d_physics/layer_2="world_smooth"
+2d_physics/layer_3="fighters"
+2d_physics/layer_4="weapons"
+2d_physics/layer_5="projectiles"
+2d_physics/layer_6="hazards"
+
+[physics]
+
+common/physics_ticks_per_second=60
+common/physics_jitter_fix=0.0
+common/physics_interpolation=true
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+textures/vram_compression/import_etc2_astc=true
+environment/defaults/default_clear_color=Color(0.03, 0.03, 0.07, 1)

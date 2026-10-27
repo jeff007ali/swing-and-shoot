@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ModeDef" format=3]
+
+[ext_resource type="Script" path="res://src/core/mode_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"free_fly"
+display_name = "Free Fly"
+short_name = "FREE FLY"
+description = "Practice the rope on your own."
+rule = &"kos"
+sort_order = 0
+players = 1
+team_count = 0
+score_target = 0
+time_limit = 0.0
+weapon_spawns = true
+weapon_sequence = Array[StringName]([])
+lan = false

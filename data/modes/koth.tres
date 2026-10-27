@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="ModeDef" format=3]
+
+[ext_resource type="Script" path="res://src/core/mode_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"koth"
+display_name = "King of the Swing"
+short_name = "KING"
+description = "Hold the moving zone alone to score. First to 20 seconds."
+rule = &"koth"
+sort_order = 4
+players = 4
+team_count = 0
+score_target = 20
+zone_radius = 340.0
+zone_period = 70.0
+time_limit = 180.0
+weapon_spawns = true
+weapon_sequence = Array[StringName]([])
+lan = true

@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="WeaponDef" format=3]
+
+[ext_resource type="Script" path="res://src/core/weapon_def.gd" id="1_def"]
+[ext_resource type="Texture2D" path="res://assets/art/weapons/blaster-h.png" id="2_tex"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"rocket"
+texture = ExtResource("2_tex")
+display_name = "Rocket Launcher"
+kind = 2
+glow_color = Color(1, 0.45, 0.2, 1)
+spawn_weight = 1.6
+sprite_size = 84.0
+legendary = false
+ammo = 3
+fire_cooldown = 0.9
+projectile_kind = &"rocket"
+recoil_impulse = 950.0
+projectile_speed = 1150.0
+projectile_damage = 34.0
+projectile_knockback = 1400.0
+projectile_lifetime = 2.0
+projectile_radius = 12.0
+projectile_color = Color(1, 0.55, 0.2, 1)
+effect_radius = 260.0

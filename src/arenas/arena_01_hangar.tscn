@@ -1,0 +1,252 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/arenas/arena_base.gd" id="1_arena"]
+[ext_resource type="Script" path="res://src/sim/arena_object.gd" id="2_object"]
+[ext_resource type="Script" path="res://src/sim/rotating_body.gd" id="3_rotating"]
+[ext_resource type="Script" path="res://src/arenas/starfield.gd" id="4_stars"]
+[ext_resource type="Texture2D" path="res://assets/art/arena/darkPurple.png" id="5_bg"]
+[ext_resource type="Texture2D" path="res://assets/art/atlas/arena/spaceMeteors_001.tres" id="6_meteor1"]
+[ext_resource type="Texture2D" path="res://assets/art/atlas/arena/spaceMeteors_002.tres" id="7_meteor2"]
+[ext_resource type="Texture2D" path="res://assets/art/atlas/arena/spaceMeteors_004.tres" id="8_meteor3"]
+[ext_resource type="Texture2D" path="res://assets/art/arena/spaceStation_003.png" id="9_wall"]
+[ext_resource type="Texture2D" path="res://assets/art/arena/spaceBuilding_006.png" id="10_box"]
+[ext_resource type="Texture2D" path="res://assets/art/arena/spaceBuilding_005.png" id="11_arm"]
+[ext_resource type="Texture2D" path="res://assets/art/atlas/arena/spaceBuilding_009.tres" id="12_hub"]
+
+[sub_resource type="RectangleShape2D" id="Rect_wall_h"]
+size = Vector2(1920, 40)
+
+[sub_resource type="RectangleShape2D" id="Rect_wall_v"]
+size = Vector2(40, 1080)
+
+[sub_resource type="RectangleShape2D" id="Rect_box"]
+size = Vector2(220, 90)
+
+[sub_resource type="CircleShape2D" id="Circle_asteroid_big"]
+radius = 55.0
+
+[sub_resource type="CircleShape2D" id="Circle_asteroid_small"]
+radius = 40.0
+
+[sub_resource type="CircleShape2D" id="Circle_hub"]
+radius = 45.0
+
+[sub_resource type="RectangleShape2D" id="Rect_arm"]
+size = Vector2(170, 30)
+
+[node name="Arena01Hangar" type="Node2D"]
+script = ExtResource("1_arena")
+arena_name = "Hangar"
+
+[node name="Background" type="Sprite2D" parent="."]
+texture_repeat = 2
+position = Vector2(960, 540)
+texture = ExtResource("5_bg")
+region_enabled = true
+region_rect = Rect2(0, 0, 3400, 1700)
+
+[node name="Starfield" type="Node2D" parent="."]
+script = ExtResource("4_stars")
+
+[node name="Walls" type="Node2D" parent="."]
+
+[node name="Top" type="StaticBody2D" parent="Walls"]
+position = Vector2(960, 20)
+script = ExtResource("2_object")
+panel_texture = ExtResource("9_wall")
+panel_margin = 10.0
+tile_panel = true
+
+[node name="Shape" type="CollisionShape2D" parent="Walls/Top"]
+shape = SubResource("Rect_wall_h")
+
+[node name="Bottom" type="StaticBody2D" parent="Walls"]
+position = Vector2(960, 1060)
+script = ExtResource("2_object")
+panel_texture = ExtResource("9_wall")
+panel_margin = 10.0
+tile_panel = true
+
+[node name="Shape" type="CollisionShape2D" parent="Walls/Bottom"]
+shape = SubResource("Rect_wall_h")
+
+[node name="Left" type="StaticBody2D" parent="Walls"]
+position = Vector2(20, 540)
+script = ExtResource("2_object")
+panel_texture = ExtResource("9_wall")
+panel_margin = 10.0
+tile_panel = true
+
+[node name="Shape" type="CollisionShape2D" parent="Walls/Left"]
+shape = SubResource("Rect_wall_v")
+
+[node name="Right" type="StaticBody2D" parent="Walls"]
+position = Vector2(1900, 540)
+script = ExtResource("2_object")
+panel_texture = ExtResource("9_wall")
+panel_margin = 10.0
+tile_panel = true
+
+[node name="Shape" type="CollisionShape2D" parent="Walls/Right"]
+shape = SubResource("Rect_wall_v")
+
+[node name="Obstacles" type="Node2D" parent="."]
+
+[node name="BoxA" type="StaticBody2D" parent="Obstacles"]
+position = Vector2(480, 300)
+script = ExtResource("2_object")
+fill_color = Color(0.2, 0.235, 0.33, 1)
+border_color = Color(0.55, 0.65, 0.9, 1)
+panel_texture = ExtResource("10_box")
+panel_margin = 22.0
+
+[node name="Shape" type="CollisionShape2D" parent="Obstacles/BoxA"]
+shape = SubResource("Rect_box")
+
+[node name="BoxB" type="StaticBody2D" parent="Obstacles"]
+position = Vector2(1440, 780)
+script = ExtResource("2_object")
+fill_color = Color(0.2, 0.235, 0.33, 1)
+border_color = Color(0.55, 0.65, 0.9, 1)
+panel_texture = ExtResource("10_box")
+panel_margin = 22.0
+
+[node name="Shape" type="CollisionShape2D" parent="Obstacles/BoxB"]
+shape = SubResource("Rect_box")
+
+[node name="Asteroid1" type="StaticBody2D" parent="Obstacles"]
+position = Vector2(420, 800)
+script = ExtResource("2_object")
+orbit_pivot = true
+draw_shapes = false
+
+[node name="Shape" type="CollisionShape2D" parent="Obstacles/Asteroid1"]
+shape = SubResource("Circle_asteroid_big")
+
+[node name="Art" type="Sprite2D" parent="Obstacles/Asteroid1"]
+rotation = 0.6
+scale = Vector2(0.54, 0.54)
+texture = ExtResource("6_meteor1")
+
+[node name="Asteroid2" type="StaticBody2D" parent="Obstacles"]
+position = Vector2(1500, 280)
+script = ExtResource("2_object")
+orbit_pivot = true
+draw_shapes = false
+
+[node name="Shape" type="CollisionShape2D" parent="Obstacles/Asteroid2"]
+shape = SubResource("Circle_asteroid_big")
+
+[node name="Art" type="Sprite2D" parent="Obstacles/Asteroid2"]
+rotation = -1.1
+scale = Vector2(0.54, 0.54)
+texture = ExtResource("7_meteor2")
+
+[node name="Asteroid3" type="StaticBody2D" parent="Obstacles"]
+position = Vector2(960, 170)
+script = ExtResource("2_object")
+orbit_pivot = true
+draw_shapes = false
+
+[node name="Shape" type="CollisionShape2D" parent="Obstacles/Asteroid3"]
+shape = SubResource("Circle_asteroid_small")
+
+[node name="Art" type="Sprite2D" parent="Obstacles/Asteroid3"]
+rotation = 2.3
+scale = Vector2(0.39, 0.39)
+texture = ExtResource("8_meteor3")
+
+[node name="Turbine" type="StaticBody2D" parent="Obstacles"]
+position = Vector2(960, 600)
+script = ExtResource("3_rotating")
+fill_color = Color(0.33, 0.2, 0.12, 1)
+border_color = Color(1, 0.62, 0.25, 1)
+panel_texture = ExtResource("11_arm")
+panel_margin = 12.0
+disc_texture = ExtResource("12_hub")
+
+[node name="Arm1" type="CollisionShape2D" parent="Obstacles/Turbine"]
+position = Vector2(85, 0)
+shape = SubResource("Rect_arm")
+
+[node name="Arm2" type="CollisionShape2D" parent="Obstacles/Turbine"]
+position = Vector2(-42.5, 73.6122)
+rotation = 2.0944
+shape = SubResource("Rect_arm")
+
+[node name="Arm3" type="CollisionShape2D" parent="Obstacles/Turbine"]
+position = Vector2(-42.5, -73.6122)
+rotation = 4.18879
+shape = SubResource("Rect_arm")
+
+[node name="Hub" type="CollisionShape2D" parent="Obstacles/Turbine"]
+shape = SubResource("Circle_hub")
+
+[node name="SpawnPoints" type="Node2D" parent="."]
+
+[node name="Spawn1" type="Marker2D" parent="SpawnPoints"]
+position = Vector2(150, 150)
+
+[node name="Spawn2" type="Marker2D" parent="SpawnPoints"]
+position = Vector2(1770, 150)
+
+[node name="Spawn3" type="Marker2D" parent="SpawnPoints"]
+position = Vector2(150, 930)
+
+[node name="Spawn4" type="Marker2D" parent="SpawnPoints"]
+position = Vector2(1770, 930)
+
+[node name="BotAnchors" type="Node2D" parent="."]
+
+[node name="WallTop" type="Marker2D" parent="BotAnchors"]
+position = Vector2(960, 40)
+
+[node name="WallBottom" type="Marker2D" parent="BotAnchors"]
+position = Vector2(960, 1040)
+
+[node name="WallLeft" type="Marker2D" parent="BotAnchors"]
+position = Vector2(40, 540)
+
+[node name="WallRight" type="Marker2D" parent="BotAnchors"]
+position = Vector2(1880, 540)
+
+[node name="BoxATop" type="Marker2D" parent="BotAnchors"]
+position = Vector2(480, 255)
+
+[node name="BoxABottom" type="Marker2D" parent="BotAnchors"]
+position = Vector2(480, 345)
+
+[node name="BoxBTop" type="Marker2D" parent="BotAnchors"]
+position = Vector2(1440, 735)
+
+[node name="BoxBBottom" type="Marker2D" parent="BotAnchors"]
+position = Vector2(1440, 825)
+
+[node name="Asteroid1West" type="Marker2D" parent="BotAnchors"]
+position = Vector2(365, 800)
+
+[node name="Asteroid1East" type="Marker2D" parent="BotAnchors"]
+position = Vector2(475, 800)
+
+[node name="Asteroid2West" type="Marker2D" parent="BotAnchors"]
+position = Vector2(1445, 280)
+
+[node name="Asteroid2East" type="Marker2D" parent="BotAnchors"]
+position = Vector2(1555, 280)
+
+[node name="Asteroid3West" type="Marker2D" parent="BotAnchors"]
+position = Vector2(920, 170)
+
+[node name="Asteroid3East" type="Marker2D" parent="BotAnchors"]
+position = Vector2(1000, 170)
+
+[node name="WeaponSpawns" type="Node2D" parent="."]
+
+[node name="Weapon1" type="Marker2D" parent="WeaponSpawns"]
+position = Vector2(700, 520)
+
+[node name="Weapon2" type="Marker2D" parent="WeaponSpawns"]
+position = Vector2(1220, 330)
+
+[node name="Weapon3" type="Marker2D" parent="WeaponSpawns"]
+position = Vector2(960, 930)

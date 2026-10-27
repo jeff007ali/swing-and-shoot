@@ -1,0 +1,89 @@
+[gd_resource type="Resource" script_class="SkinDef" format=3]
+
+[ext_resource type="Texture2D" path="res://assets/art/atlas/characters/hook.tres" id="1_8ak4t"]
+[ext_resource type="Texture2D" path="res://assets/art/fx/rope_tile.png" id="2_qsryf"]
+[ext_resource type="Script" path="res://src/core/skin_def.gd" id="3_67owe"]
+[ext_resource type="Texture2D" path="res://assets/art/atlas/characters/character_green_duck.tres" id="4_l12m7"]
+[ext_resource type="Texture2D" path="res://assets/art/atlas/characters/character_green_idle.tres" id="5_wk6ea"]
+[ext_resource type="Texture2D" path="res://assets/art/atlas/characters/character_green_hit.tres" id="6_5oe44"]
+[ext_resource type="Texture2D" path="res://assets/art/atlas/characters/character_green_jump.tres" id="7_brbuo"]
+[ext_resource type="Texture2D" path="res://assets/art/atlas/characters/character_green_front.tres" id="8_bbpxc"]
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_8tnvt"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("4_l12m7")
+}],
+"loop": 1,
+"name": &"cling",
+"speed": 6.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("5_wk6ea")
+}],
+"loop": 1,
+"name": &"float",
+"speed": 6.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("6_5oe44")
+}],
+"loop": 1,
+"name": &"hurt",
+"speed": 6.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("7_brbuo")
+}],
+"loop": 1,
+"name": &"kick",
+"speed": 6.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("6_5oe44")
+}, {
+"duration": 1.0,
+"texture": ExtResource("4_l12m7")
+}],
+"loop": 0,
+"name": &"ko",
+"speed": 6.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("8_bbpxc")
+}, {
+"duration": 1.0,
+"texture": ExtResource("7_brbuo")
+}, {
+"duration": 1.0,
+"texture": ExtResource("5_wk6ea")
+}],
+"loop": 0,
+"name": &"melee",
+"speed": 20.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": ExtResource("7_brbuo")
+}],
+"loop": 1,
+"name": &"reel",
+"speed": 6.0
+}]
+
+[resource]
+script = ExtResource("3_67owe")
+id = &"alien_green"
+display_name = "Green"
+sprite_frames = SubResource("SpriteFrames_8tnvt")
+rope_color = Color(0.48235294, 0.8784314, 0.65882355, 1)
+hook_color = Color(0.78431374, 1, 0.8784314, 1)
+trail_color = Color(0.48, 0.88, 0.66, 0.55)
+hook_texture = ExtResource("1_8ak4t")
+rope_texture = ExtResource("2_qsryf")

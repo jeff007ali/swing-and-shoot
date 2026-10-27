@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="BotProfile" format=3]
+
+[ext_resource type="Script" path="res://src/core/bot_profile.gd" id="1_profile"]
+
+[resource]
+script = ExtResource("1_profile")
+id = &"hard"
+display_name = "Hard"
+reaction_time = 0.12
+aim_error_deg = 2.0
+aggression = 2.0
+escape_chance = 0.7
+idle_cling_time = 0.35
+weapon_interest = 0.75
+fire_rate = 3.5
+melee_timing_error_ticks = 0
+perception_interval_ticks = 6
+melee_trigger_margin = 20.0
+slow_speed = 150.0
+preferred_min_dist = 300.0
+preferred_max_dist = 550.0
+anchor_pick_count = 3
+anchor_min_move = 80.0
+anchor_hit_tolerance = 16.0
+no_sight_penalty = 400.0
+hold_position_when_ropeable = true

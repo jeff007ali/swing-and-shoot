@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="ChallengeDef" format=3]
+
+[ext_resource type="Script" path="res://src/core/challenge_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"tut_02_kick"
+text = "You cling on arrival. Swipe away from the wall to kick off"
+event = &"kicked_off"
+actor_arg = 0
+match_args = {}
+count = 1

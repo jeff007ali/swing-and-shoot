@@ -1,0 +1,24 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/sim/fighter.gd" id="1_fighter"]
+[ext_resource type="Script" path="res://src/sim/rope.gd" id="2_rope"]
+[ext_resource type="Script" path="res://src/fx/fighter_view.gd" id="3_view"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_body"]
+radius = 28.0
+
+[node name="Fighter" type="CharacterBody2D"]
+collision_layer = 4
+collision_mask = 3
+motion_mode = 1
+script = ExtResource("1_fighter")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_body")
+
+[node name="Rope" type="Node" parent="."]
+script = ExtResource("2_rope")
+
+[node name="View" type="Node2D" parent="."]
+physics_interpolation_mode = 2
+script = ExtResource("3_view")

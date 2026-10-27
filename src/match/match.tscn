@@ -1,0 +1,64 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/match/match.gd" id="1_match"]
+[ext_resource type="Script" path="res://src/sim/match_sim.gd" id="2_sim"]
+[ext_resource type="Script" path="res://src/fx/impact_fx.gd" id="4_fx"]
+[ext_resource type="Script" path="res://src/fx/debug_world.gd" id="5_debug_world"]
+[ext_resource type="Script" path="res://src/fx/camera_shake.gd" id="6_camera"]
+[ext_resource type="Script" path="res://src/input/touch_router.gd" id="7_router"]
+[ext_resource type="Script" path="res://src/input/desktop_input.gd" id="8_desktop"]
+[ext_resource type="Script" path="res://src/ui/hud.gd" id="9_hud"]
+[ext_resource type="Script" path="res://src/ui/debug_overlay.gd" id="10_debug_overlay"]
+[ext_resource type="Script" path="res://src/ui/pause_menu.gd" id="11_pause"]
+[ext_resource type="Script" path="res://src/fx/weapons_view.gd" id="12_weapons"]
+[ext_resource type="Script" path="res://src/fx/hazard_view.gd" id="13_hazards"]
+[ext_resource type="Script" path="res://src/fx/mode_view.gd" id="14_mode_view"]
+[ext_resource type="Script" path="res://src/ui/results_screen.gd" id="15_results"]
+
+[node name="Match" type="Node2D"]
+script = ExtResource("1_match")
+
+[node name="MatchSim" type="Node" parent="."]
+script = ExtResource("2_sim")
+
+[node name="HazardView" type="Node2D" parent="."]
+script = ExtResource("13_hazards")
+
+[node name="ModeView" type="Node2D" parent="."]
+script = ExtResource("14_mode_view")
+
+[node name="RopeViews" type="Node2D" parent="."]
+
+[node name="Fighters" type="Node2D" parent="."]
+
+[node name="Weapons" type="Node2D" parent="."]
+script = ExtResource("12_weapons")
+
+[node name="Fx" type="Node2D" parent="."]
+script = ExtResource("4_fx")
+
+[node name="DebugWorld" type="Node2D" parent="."]
+script = ExtResource("5_debug_world")
+
+[node name="Camera2D" type="Camera2D" parent="."]
+position = Vector2(960, 540)
+process_callback = 0
+script = ExtResource("6_camera")
+
+[node name="TouchRouter" type="Node" parent="."]
+script = ExtResource("7_router")
+
+[node name="DesktopInput" type="Node" parent="."]
+script = ExtResource("8_desktop")
+
+[node name="HUD" type="CanvasLayer" parent="."]
+script = ExtResource("9_hud")
+
+[node name="DebugOverlay" type="CanvasLayer" parent="."]
+script = ExtResource("10_debug_overlay")
+
+[node name="PauseMenu" type="CanvasLayer" parent="."]
+script = ExtResource("11_pause")
+
+[node name="ResultsScreen" type="CanvasLayer" parent="."]
+script = ExtResource("15_results")

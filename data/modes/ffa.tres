@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ModeDef" format=3]
+
+[ext_resource type="Script" path="res://src/core/mode_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"ffa"
+display_name = "Free-for-all"
+short_name = "FFA"
+description = "Four fighters. First to 10 KOs, 3 minutes."
+rule = &"kos"
+sort_order = 2
+players = 4
+team_count = 0
+score_target = 10
+time_limit = 180.0
+weapon_spawns = true
+weapon_sequence = Array[StringName]([])
+lan = true

@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="WeaponDef" format=3]
+
+[ext_resource type="Script" path="res://src/core/weapon_def.gd" id="1_def"]
+[ext_resource type="Texture2D" path="res://assets/art/weapons/blaster-a.png" id="2_tex"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"pistol"
+texture = ExtResource("2_tex")
+display_name = "Pistol"
+kind = 0
+glow_color = Color(0.75, 0.6, 1, 1)
+spawn_weight = 5.0
+ammo = 12
+fire_cooldown = 0.22
+recoil_impulse = 120.0
+projectile_count = 1
+spread_deg = 0.0
+projectile_speed = 2300.0
+projectile_damage = 9.0
+projectile_knockback = 320.0
+projectile_lifetime = 0.75
+projectile_radius = 6.0
+projectile_color = Color(0.85, 0.7, 1, 1)
