@@ -15,6 +15,16 @@ func test_bad_join_codes_are_rejected() -> void:
 	assert_eq(NetProtocol.join_code("not an ip"), "")
 
 
+func test_wifi_and_hotspot_rank_before_mobile_data() -> void:
+	for wifi in ["wlan0", "swlan0", "ap0", "en0"]:
+		assert_eq(NetProtocol.interface_rank(wifi), 0, wifi)
+	for data in ["rmnet_data0", "ccmni1", "v4-rmnet_data1", "tun0"]:
+		assert_eq(NetProtocol.interface_rank(data), 2, data)
+	assert_true(NetProtocol.is_lan_ipv4("192.168.43.1"))
+	assert_false(NetProtocol.is_lan_ipv4("100.72.3.9"), "carrier NAT isn't a LAN address")
+	assert_false(NetProtocol.is_lan_ipv4("fe80::1"))
+
+
 func test_beacon_round_trip() -> void:
 	var info := NetProtocol.parse_beacon(NetProtocol.beacon("Jafar", 2, "vs_bot", "station"))
 	assert_eq(info["n"], "Jafar")

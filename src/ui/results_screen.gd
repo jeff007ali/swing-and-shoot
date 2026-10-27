@@ -48,6 +48,7 @@ func _ready() -> void:
 	buttons.add_theme_constant_override("separation", 20)
 	box.add_child(buttons)
 	_rematch = _button("REMATCH", func() -> void: rematch_requested.emit())
+	_rematch.theme_type_variation = UiTheme.PRIMARY
 	buttons.add_child(_rematch)
 	buttons.add_child(_button("MAIN MENU", func() -> void: main_menu_requested.emit()))
 

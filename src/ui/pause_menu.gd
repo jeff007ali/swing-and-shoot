@@ -50,7 +50,7 @@ func _ready() -> void:
 	title.add_theme_color_override("font_color", UiTheme.ACCENT)
 	box.add_child(title)
 
-	_add_button(box, "RESUME", close)
+	_add_button(box, "RESUME", close).theme_type_variation = UiTheme.PRIMARY
 	_restart_button = _add_button(box, "RESTART", func() -> void: restart_requested.emit())
 	_add_button(box, "SETTINGS", func() -> void: _settings.open())
 	_menu_button = _add_button(box, "MAIN MENU", func() -> void: main_menu_requested.emit())

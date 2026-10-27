@@ -300,7 +300,7 @@ func test_menu_mode_picker_starts_the_picked_mode() -> void:
 	var menu := MainMenu.new()
 	menu.change_scene = false
 	add_child_autofree(menu)
-	menu.call("_pick_mode", &"koth")
-	menu.start_match(menu.get("_play_mode"))
+	menu.setup.pick_mode(&"koth")
+	menu.start_match(menu.setup.mode_id)
 	assert_eq(Settings.last_mode, "koth")
 	Settings.path_override = ""

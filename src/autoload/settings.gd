@@ -14,6 +14,8 @@ var show_debug: bool = false
 var bot_difficulty: String = "normal"
 ## Mode id (data/modes), as last picked in the main menu or the LAN lobby.
 var last_mode: String = "vs_bot"
+## The mode picked on the PLAY page; last_mode can also be Free Fly or the tutorial.
+var play_mode: String = "vs_bot"
 ## Arena id from ArenaRegistry, as last picked in the main menu.
 var last_arena: String = "station"
 ## Write a CSV per match to user://playtest/ (§4.13).
@@ -46,6 +48,7 @@ func load_settings() -> void:
 	show_debug = cfg.get_value(SECTION, "show_debug", show_debug)
 	bot_difficulty = cfg.get_value(SECTION, "bot_difficulty", bot_difficulty)
 	last_mode = cfg.get_value(SECTION, "last_mode", last_mode)
+	play_mode = cfg.get_value(SECTION, "play_mode", last_mode)
 	playtest_logging = cfg.get_value(SECTION, "playtest_logging", playtest_logging)
 	last_arena = cfg.get_value(SECTION, "last_arena", last_arena)
 	left_handed = cfg.get_value(SECTION, "left_handed", left_handed)
@@ -63,6 +66,7 @@ func save_settings() -> void:
 	cfg.set_value(SECTION, "show_debug", show_debug)
 	cfg.set_value(SECTION, "bot_difficulty", bot_difficulty)
 	cfg.set_value(SECTION, "last_mode", last_mode)
+	cfg.set_value(SECTION, "play_mode", play_mode)
 	cfg.set_value(SECTION, "playtest_logging", playtest_logging)
 	cfg.set_value(SECTION, "last_arena", last_arena)
 	cfg.set_value(SECTION, "left_handed", left_handed)

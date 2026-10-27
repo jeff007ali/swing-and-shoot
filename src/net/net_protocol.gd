@@ -89,15 +89,39 @@ static func address_from_code(code: String, own_ipv4: String) -> String:
 	return "%s.%s.%d.%d" % [own[0], own[1], c, d]
 
 
-## This device's LAN IPv4 addresses (private ranges), best guess first.
+## This device's LAN IPv4 addresses (private ranges), best guess first: Wi-Fi and hotspot
+## interfaces before mobile data, whose carrier 10.x address can't be reached by friends.
 static func local_ipv4() -> PackedStringArray:
+	var ranked: Array = []
+	for iface: Dictionary in IP.get_local_interfaces():
+		var rank := interface_rank(iface.get("name", ""))
+		for a: String in iface.get("addresses", []):
+			if is_lan_ipv4(a):
+				ranked.append([rank, a])
+	ranked.sort_custom(func(x: Array, y: Array) -> bool: return x[0] < y[0])
 	var out := PackedStringArray()
-	for a in IP.get_local_addresses():
-		if a.count(".") != 3 or a.begins_with("127.") or a.begins_with("169.254."):
-			continue
-		if a.begins_with("192.168.") or a.begins_with("10.") or _is_172_private(a):
-			out.append(a)
+	for pair: Array in ranked:
+		if not out.has(pair[1]):
+			out.append(pair[1])
 	return out
+
+
+static func is_lan_ipv4(a: String) -> bool:
+	if a.count(".") != 3 or a.begins_with("127.") or a.begins_with("169.254."):
+		return false
+	return a.begins_with("192.168.") or a.begins_with("10.") or _is_172_private(a)
+
+
+## 0 for Wi-Fi, hotspot and wired interfaces, 2 for mobile data and VPNs, 1 for anything else.
+static func interface_rank(iface_name: String) -> int:
+	var n := iface_name.to_lower()
+	for prefix in ["wlan", "swlan", "ap", "softap", "wifi", "en", "eth"]:
+		if n.begins_with(prefix):
+			return 0
+	for prefix in ["rmnet", "ccmni", "v4-", "pdp", "ppp", "tun", "utun", "ipsec", "dummy", "clat"]:
+		if n.begins_with(prefix):
+			return 2
+	return 1
 
 
 static func beacon(host_name: String, players: int, mode: String, arena: String) -> PackedByteArray:

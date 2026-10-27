@@ -5,7 +5,7 @@ extends GutTest
 const MAIN_MENU: PackedScene = preload("res://src/ui/main_menu.tscn")
 const TEST_SETTINGS: String = "user://test_settings.cfg"
 const TEST_PRESET: String = "gut_test_preset"
-const SAVED := ["haptics_enabled", "sfx_volume", "music_volume", "show_debug", "bot_difficulty", "last_mode", "playtest_logging", "last_arena", "left_handed", "button_scale", "colorblind", "tutorial_done", "rope_stick"]
+const SAVED := ["haptics_enabled", "sfx_volume", "music_volume", "show_debug", "bot_difficulty", "last_mode", "playtest_logging", "last_arena", "left_handed", "button_scale", "colorblind", "tutorial_done", "rope_stick", "play_mode"]
 
 var _saved: Dictionary = {}
 
@@ -36,12 +36,12 @@ func _menu() -> MainMenu:
 
 func test_menu_vs_bot_with_hard_saves_mode_and_difficulty() -> void:
 	var menu := _menu()
-	(menu._difficulty_buttons["hard"] as Button).pressed.emit()
+	(menu.setup.difficulty_buttons["hard"] as Button).pressed.emit()
 	menu.start_match(&"vs_bot")
 	assert_eq(Settings.bot_difficulty, "hard")
 	assert_eq(Settings.last_mode, "vs_bot")
-	assert_true((menu._difficulty_buttons["hard"] as Button).button_pressed)
-	assert_false((menu._difficulty_buttons["normal"] as Button).button_pressed)
+	assert_true((menu.setup.difficulty_buttons["hard"] as Button).button_pressed)
+	assert_false((menu.setup.difficulty_buttons["normal"] as Button).button_pressed)
 	var cfg := ConfigFile.new()
 	assert_eq(cfg.load(TEST_SETTINGS), OK, "saved to disk")
 	assert_eq(cfg.get_value("settings", "bot_difficulty"), "hard")
@@ -49,11 +49,29 @@ func test_menu_vs_bot_with_hard_saves_mode_and_difficulty() -> void:
 
 func test_menu_arena_picker_saves_the_arena() -> void:
 	var menu := _menu()
-	(menu._arena_buttons["hangar"] as Button).pressed.emit()
+	menu.setup.pick_arena(&"hangar")
 	assert_eq(Settings.last_arena, "hangar")
-	(menu._arena_buttons["station"] as Button).pressed.emit()
-	assert_eq(Settings.last_arena, "station")
-	assert_true((menu._arena_buttons["station"] as Button).button_pressed)
+	menu.setup.step_arena(1)
+	assert_eq(Settings.last_arena, "station", "the arrows wrap round the list")
+	assert_eq(menu.setup.arena_id, &"station")
+
+
+func test_play_page_opens_from_home_and_back_returns() -> void:
+	var menu := _menu()
+	assert_false(menu.setup.is_visible_in_tree(), "home first")
+	menu._open_play()
+	assert_true(menu.setup.is_visible_in_tree())
+	menu._show_home()
+	assert_false(menu.setup.is_visible_in_tree())
+
+
+func test_free_fly_keeps_the_play_page_mode() -> void:
+	var menu := _menu()
+	menu.setup.pick_mode(&"koth")
+	menu.start_match(&"free_fly")
+	assert_eq(Settings.last_mode, "free_fly", "the match starts Free Fly")
+	var again := _menu()
+	assert_eq(again.setup.mode_id, &"koth", "PLAY still remembers King of the Swing")
 
 
 func test_menu_free_fly() -> void:
@@ -65,7 +83,7 @@ func test_menu_free_fly() -> void:
 func test_menu_shows_the_saved_difficulty() -> void:
 	Settings.bot_difficulty = "easy"
 	var menu := _menu()
-	assert_true((menu._difficulty_buttons["easy"] as Button).button_pressed)
+	assert_true((menu.setup.difficulty_buttons["easy"] as Button).button_pressed)
 
 
 func test_menu_shows_the_version() -> void:

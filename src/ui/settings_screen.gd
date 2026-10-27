@@ -55,6 +55,7 @@ func _ready() -> void:
 
 	var done := Button.new()
 	done.text = "DONE"
+	done.theme_type_variation = UiTheme.PRIMARY
 	done.custom_minimum_size = Vector2(320, 84)
 	done.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	done.pressed.connect(close)

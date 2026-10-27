@@ -32,6 +32,8 @@ func start_broadcasting(source: Callable) -> void:
 func start_listening() -> Error:
 	stop()
 	_listener = PacketPeerUDP.new()
+	# On Android this also takes the Wi-Fi multicast lock; without it the phone drops broadcast beacons.
+	_listener.set_broadcast_enabled(true)
 	var err := _listener.bind(NetProtocol.BEACON_PORT, "*")
 	if err != OK:
 		_listener = null
