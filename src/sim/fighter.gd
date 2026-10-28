@@ -54,9 +54,17 @@ var hit_spin: float = 0.0
 var hit_spin_dir: float = 1.0
 ## Freeze ray (§6.6): until this tick the fighter can't act, keeps its speed and can always be roped.
 var frozen_until: int = SimIds.NO_TICK
+## Pickups (consumables): armor soaks damage before HP; haste and power last until their tick.
+var armor: float = 0.0
+var haste_until: int = SimIds.NO_TICK
+var power_until: int = SimIds.NO_TICK
 
 var _cling_local_pos: Vector2 = Vector2.ZERO
 var _cling_local_normal: Vector2 = Vector2.UP
+## A moving surface (turbine) this fighter just let go of: until _released_until it can't cling to it
+## again and is pushed off it instead, so the sweeping arm can't pin it.
+var _released_object: ArenaObject = null
+var _released_until: int = SimIds.NO_TICK
 
 @onready var rope: Rope = $Rope
 @onready var view: FighterView = $View
@@ -106,9 +114,10 @@ func step_timers(tick: int) -> void:
 		cling_ticks_left -= 1
 		if cling_ticks_left <= 0:
 			var normal := cling_normal
+			var carry := _surface_velocity()
 			_leave_cling()
 			state = _idle_state()
-			velocity = normal * TuningDB.t.cling_drift_speed
+			velocity = normal * TuningDB.t.cling_drift_speed + carry
 
 
 func teleport(pos: Vector2) -> void:
@@ -119,6 +128,7 @@ func teleport(pos: Vector2) -> void:
 	rope.reset()
 	_break_pull()
 	_leave_cling()
+	_released_object = null
 	state = SimIds.FighterState.FREE
 	velocity = Vector2.ZERO
 	freeze_ticks = 0
@@ -132,6 +142,9 @@ func teleport(pos: Vector2) -> void:
 func respawn_at(pos: Vector2, tick: int) -> void:
 	teleport(pos)
 	hp = TuningDB.t.max_hp
+	armor = 0.0
+	haste_until = SimIds.NO_TICK
+	power_until = SimIds.NO_TICK
 	invulnerable_until_tick = tick + SimIds.ticks(TuningDB.t.spawn_invuln)
 	pull_immune_until_tick = 0
 	hitstun_until_tick = 0
@@ -188,6 +201,33 @@ func is_frozen(tick: int) -> bool:
 	return tick < frozen_until and not is_ko()
 
 
+func is_hasted(tick: int) -> bool:
+	return tick < haste_until and not is_ko()
+
+
+func is_powered(tick: int) -> bool:
+	return tick < power_until and not is_ko()
+
+
+## Movement multiplier from the haste pickup: reel, kick, top speed and rope cooldown.
+func speed_mult(tick: int) -> float:
+	return TuningDB.t.haste_mult if is_hasted(tick) else 1.0
+
+
+## A consumable pickup reached this fighter (WeaponSystem.consume).
+func apply_consumable(def: WeaponDef, tick: int) -> void:
+	var t := TuningDB.t
+	match def.projectile_kind:
+		&"health":
+			hp = minf(t.max_hp, hp + def.effect_strength)
+		&"armor":
+			armor = minf(t.max_armor, armor + def.effect_strength)
+		&"haste":
+			haste_until = tick + SimIds.ticks(def.effect_time)
+		&"power":
+			power_until = tick + SimIds.ticks(def.effect_time)
+
+
 ## MEL-04: a melee swing parries things coming at its front during its active frames, plus
 ## PARRY_WINDOW either side. incoming_velocity is the velocity of the bullet or hook.
 func is_parrying(tick: int, incoming_velocity: Vector2) -> bool:
@@ -204,6 +244,7 @@ func is_parrying(tick: int, incoming_velocity: Vector2) -> bool:
 ## Recoil or a push knocks a clinging fighter off its surface.
 func leave_surface() -> void:
 	if state == SimIds.FighterState.CLINGING:
+		velocity = _surface_velocity()
 		_leave_cling()
 		state = _idle_state()
 
@@ -224,6 +265,8 @@ func melee_phase(tick: int) -> SimIds.MeleePhase:
 
 ## Called by the rope when it attaches to a surface.
 func enter_rope_state(new_state: SimIds.FighterState) -> void:
+	if state == SimIds.FighterState.CLINGING:
+		velocity = _surface_velocity()
 	_leave_cling()
 	state = new_state
 
@@ -267,7 +310,12 @@ func take_hit(tick: int, attacker_id: int, damage: float, knockback: Vector2, hi
 	if weapon_id >= 0 and sim != null and knockback.length() >= TuningDB.t.disarm_knockback:
 		# HP-03: a hard hit knocks the weapon loose in a random direction.
 		sim.weapons.drop(self, Vector2.from_angle(sim.rng.randf() * TAU))
-	hp -= damage
+	var attacker := sim.get_fighter(attacker_id) if sim != null and attacker_id >= 0 and attacker_id != fighter_id else null
+	if attacker != null and attacker.is_powered(tick):
+		damage *= TuningDB.t.power_mult
+	var soaked := minf(armor, damage)
+	armor -= soaked
+	hp -= damage - soaked
 	velocity = knockback
 	hit_spin = knockback.length()
 	hit_spin_dir = -1.0 if knockback.x < 0.0 else 1.0
@@ -353,6 +401,11 @@ func get_state() -> Dictionary:
 		"last_hit_tick": last_hit_tick,
 		"fire_ready": fire_ready_tick,
 		"frozen": frozen_until,
+		"armor": armor,
+		"haste": haste_until,
+		"power": power_until,
+		"released_obj": _released_object.object_id if _released_object != null else -1,
+		"released_until": _released_until,
 		"rope": rope.get_state(),
 	}
 
@@ -386,6 +439,11 @@ func set_state(s: Dictionary) -> void:
 	last_hit_tick = s["last_hit_tick"]
 	fire_ready_tick = s["fire_ready"]
 	frozen_until = s.get("frozen", SimIds.NO_TICK)
+	armor = s.get("armor", 0.0)
+	haste_until = s.get("haste", SimIds.NO_TICK)
+	power_until = s.get("power", SimIds.NO_TICK)
+	_released_object = sim.get_object(s.get("released_obj", -1)) if sim != null else null
+	_released_until = s.get("released_until", SimIds.NO_TICK)
 	rope.set_state(s["rope"])
 
 
@@ -450,14 +508,15 @@ func _kick(dir: Vector2) -> void:
 	var t := TuningDB.t
 	var raw := dir if dir.length_squared() > 0.0001 else cling_normal
 	var kick_dir := MathUtil.correct_kick_dir(raw, cling_normal, t.kick_min_normal_dot)
+	var carry := _surface_velocity()
 	_leave_cling()
 	state = _idle_state()
-	velocity = kick_dir * t.kick_speed
+	velocity = kick_dir * t.kick_speed * speed_mult(sim.tick if sim != null else 0) + carry
 	facing = kick_dir
 	emit_event(&"kicked_off", [fighter_id, kick_dir])
 
 
-## MEL-01: wind-up, active, recovery. Swings along aim if the player aimed (HIT dragged), else at
+## MEL-01: wind-up, active, recovery. Swings along aim if the player aimed (KNIFE dragged), else at
 ## the nearest enemy in reach (§4.8 auto-aim), and lunges that way.
 func start_melee(tick: int, aim: Vector2 = Vector2.ZERO) -> void:
 	var t := TuningDB.t
@@ -499,6 +558,14 @@ func _follow_cling_surface() -> void:
 	cling_normal = cling_object.global_transform.basis_xform(_cling_local_normal).normalized()
 
 
+## How fast the surface this fighter clings to is moving under it (a turbine arm). Letting go keeps
+## it, so a sweeping arm doesn't catch the fighter again right away.
+func _surface_velocity() -> Vector2:
+	if state != SimIds.FighterState.CLINGING or cling_object == null:
+		return Vector2.ZERO
+	return cling_object.surface_velocity(global_position)
+
+
 func _integrate() -> void:
 	if state == SimIds.FighterState.CLINGING:
 		velocity = Vector2.ZERO
@@ -506,7 +573,7 @@ func _integrate() -> void:
 	var t := TuningDB.t
 	if not is_frozen(sim.tick if sim != null else 0):
 		velocity *= MathUtil.drag_factor(t.drag, SimIds.DT)
-	velocity = velocity.limit_length(t.max_speed)
+	velocity = velocity.limit_length(t.max_speed * speed_mult(sim.tick if sim != null else 0))
 	if velocity.length_squared() > 1.0 and melee_phase(sim.tick if sim != null else 0) == SimIds.MeleePhase.NONE:
 		facing = velocity.normalized()
 
@@ -529,6 +596,9 @@ func _move() -> void:
 	if obj == null:
 		velocity = velocity.slide(collision.get_normal())
 		return
+	if obj == _released_object and (sim.tick if sim != null else 0) < _released_until:
+		_push_off(collision, obj)
+		return
 	match obj.surface_type:
 		&"smooth":
 			# ARN-07: nothing to grab; bounce off.
@@ -537,6 +607,18 @@ func _move() -> void:
 			_shock(collision)
 		_:
 			_cling(collision, obj)
+
+
+## Touching a moving surface just let go of: keep at least KICK_MIN_NORMAL_DOT x KICK_SPEED away
+## from it, relative to its own motion. Each push starts the grace again.
+func _push_off(collision: KinematicCollision2D, obj: ArenaObject) -> void:
+	var t := TuningDB.t
+	var n := collision.get_normal()
+	var carry := obj.surface_velocity(collision.get_position())
+	var rel := velocity - carry
+	rel += n * maxf(0.0, t.kick_speed * t.kick_min_normal_dot - rel.dot(n))
+	velocity = rel + carry
+	_released_until = sim.tick + SimIds.ticks(t.moving_release_grace) if sim != null else _released_until
 
 
 ## ARN-05: bounce off hard and take damage (at most every ELECTRIC_COOLDOWN).
@@ -573,4 +655,7 @@ func _cling(collision: KinematicCollision2D, obj: ArenaObject) -> void:
 
 
 func _leave_cling() -> void:
+	if cling_object != null and cling_object.is_moving and state == SimIds.FighterState.CLINGING:
+		_released_object = cling_object
+		_released_until = (sim.tick if sim != null else 0) + SimIds.ticks(TuningDB.t.moving_release_grace)
 	cling_object = null

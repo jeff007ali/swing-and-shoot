@@ -5,7 +5,8 @@ extends Node2D
 ## held weapons sit at the fighter's hand; bullets are glowing streaks; thrown guns spin.
 ## Phase 6 (§6.6): special projectiles (rockets, ricochet lasers, boomerangs, grenades, harpoons,
 ## freeze bolts, mines), gravity wells, tethers, rope duels, held shields and the announced spot of
-## a legendary weapon. Visual only. Works across LAN rewinds because it reads the sim's lists fresh
+## a legendary weapon. Pickups (consumables) are drawn as icons; a held sniper shows a laser sight
+## to everyone. Visual only. Works across LAN rewinds because it reads the sim's lists fresh
 ## every frame.
 
 const GLOW: Texture2D = preload("res://assets/art/fx/light_01.png")
@@ -17,6 +18,8 @@ const BLINK_SLOW: float = 2.0
 const BLINK_FAST: float = 10.0
 const STREAK_TIME: float = 0.018
 const SWORD_LENGTH: float = 78.0
+const SNIPER_SIGHT: Color = Color(1.0, 0.15, 0.1, 0.55)
+const SNIPER_SIGHT_LENGTH: float = 3300.0
 const DEBRIS_TEXTURES: Array[Texture2D] = [
 	preload("res://assets/art/atlas/arena/spaceMeteors_001.tres"), preload("res://assets/art/atlas/arena/spaceMeteors_002.tres"),
 	preload("res://assets/art/atlas/arena/spaceMeteors_003.tres"), preload("res://assets/art/atlas/arena/spaceMeteors_004.tres"),
@@ -63,7 +66,8 @@ func _draw() -> void:
 					var rate := lerpf(BLINK_FAST, BLINK_SLOW, clampf(left / maxf(t.weapon_blink_time, 0.01), 0.0, 1.0))
 					if int(now * rate * 2.0) % 2 == 1:
 						continue
-				_draw_item(item.def, item.prev_pos.lerp(item.pos, f), item.angle, 1.0)
+				var angle := item.angle if item.def.kind != WeaponDef.Kind.CONSUMABLE else sin(now * 2.0 + item.id) * 0.2
+				_draw_item(item.def, item.prev_pos.lerp(item.pos, f), angle, 1.0)
 	for p in sim.weapons.projectiles:
 		var pos := p.prev_pos.lerp(p.pos, f)
 		if p.kind == Projectile.Kind.THROWN:
@@ -152,6 +156,9 @@ func _draw_special_world(now: float) -> void:
 	for m in sw.mines:
 		var at: Vector2 = m["pos"]
 		var armed := sim.tick >= int(m["armed"])
+		if m.get("kind", &"tether_mine") == &"prox_mine":
+			_draw_prox_mine(at, float(m["radius"]), armed, now)
+			continue
 		draw_arc(at, float(m["radius"]), 0.0, TAU, 48, Color(1.0, 0.3, 0.3, 0.15 if armed else 0.05), 2.0, true)
 		draw_circle(at, 14.0, Color(0.25, 0.25, 0.3))
 		draw_circle(at, 6.0, Color(1.0, 0.2, 0.2) if armed and int(now * 3.0) % 2 == 0 else Color(0.5, 0.1, 0.1))
@@ -169,6 +176,21 @@ func _draw_special_world(now: float) -> void:
 		var c := def.glow_color if def != null else Color.GOLD
 		draw_arc(at, 70.0 + 20.0 * sin(now * 6.0), 0.0, TAU, 48, Color(c, 0.9), 5.0, true)
 		draw_string(UiTheme.FONT, at + Vector2(-60, 14), "%d" % ceili(left), HORIZONTAL_ALIGNMENT_CENTER, 120, 44, Color(c, 0.95))
+
+
+## A spiked proximity mine; its trigger ring shows once armed, and it blinks faster then.
+func _draw_prox_mine(at: Vector2, radius: float, armed: bool, now: float) -> void:
+	var c := Color(1.0, 0.55, 0.15)
+	if armed:
+		draw_circle(at, radius, Color(c, 0.07))
+		draw_arc(at, radius, 0.0, TAU, 48, Color(c, 0.35), 2.0, true)
+	var spikes := PackedVector2Array()
+	for i in 16:
+		spikes.append(at + Vector2.from_angle(TAU * i / 16.0) * (22.0 if i % 2 == 0 else 15.0))
+	draw_colored_polygon(spikes, Color(0.3, 0.27, 0.25))
+	draw_circle(at, 12.0, Color(0.45, 0.4, 0.35))
+	var lit := int(now * (5.0 if armed else 1.5)) % 2 == 0
+	draw_circle(at, 6.0, Color(1.0, 0.45, 0.1) if lit else Color(0.4, 0.15, 0.05))
 
 
 func _draw_glows() -> void:
@@ -190,7 +212,9 @@ func _draw_item(def: WeaponDef, pos: Vector2, angle: float, scale: float) -> voi
 	if def == null:
 		return
 	draw_set_transform(pos, angle, Vector2.ONE * scale)
-	if def.projectile_kind == &"shield":
+	if def.kind == WeaponDef.Kind.CONSUMABLE:
+		_draw_pickup(def)
+	elif def.projectile_kind == &"shield":
 		_draw_shield(def.glow_color)
 	elif def.projectile_kind == &"boomerang":
 		draw_set_transform_matrix(Transform2D.IDENTITY)
@@ -203,11 +227,35 @@ func _draw_item(def: WeaponDef, pos: Vector2, angle: float, scale: float) -> voi
 	draw_set_transform_matrix(Transform2D.IDENTITY)
 
 
+## Consumable icons, about 52 px across: a med cross, an armor plate, a lightning bolt, a star.
+func _draw_pickup(def: WeaponDef) -> void:
+	var c := def.glow_color
+	draw_circle(Vector2.ZERO, 26.0, Color(0.08, 0.1, 0.16, 0.9))
+	draw_arc(Vector2.ZERO, 26.0, 0.0, TAU, 32, c, 3.0, true)
+	match def.projectile_kind:
+		&"health":
+			draw_rect(Rect2(-6, -16, 12, 32), c)
+			draw_rect(Rect2(-16, -6, 32, 12), c)
+		&"armor":
+			var plate := PackedVector2Array([Vector2(0, -17), Vector2(14, -10), Vector2(12, 6), Vector2(0, 17), Vector2(-12, 6), Vector2(-14, -10)])
+			draw_colored_polygon(plate, c)
+			draw_polyline(plate + PackedVector2Array([plate[0]]), Color.WHITE, 2.0, true)
+		&"haste":
+			draw_colored_polygon(PackedVector2Array([Vector2(4, -18), Vector2(-10, 3), Vector2(-1, 3), Vector2(-5, 18), Vector2(10, -4), Vector2(1, -4)]), c)
+		&"power":
+			var star := PackedVector2Array()
+			for i in 10:
+				star.append(Vector2.from_angle(-PI * 0.5 + TAU * i / 10.0) * (17.0 if i % 2 == 0 else 7.5))
+			draw_colored_polygon(star, c)
+
+
 func _draw_held(item: WeaponItem, f: float) -> void:
 	var holder := sim.get_fighter(item.holder_id)
 	if holder == null or holder.is_ko():
 		return
 	var pos := holder.prev_position.lerp(holder.global_position, f) + (holder.view.position if holder.view != null else Vector2.ZERO)
+	if item.def.id == &"sniper":
+		_draw_sniper_sight(holder, pos)
 	var dir := holder.facing
 	var angle := dir.angle()
 	var phase := holder.melee_phase(sim.tick)
@@ -233,6 +281,19 @@ func _draw_held(item: WeaponItem, f: float) -> void:
 	else:
 		_draw_sword(item.def.glow_color, true)
 	draw_set_transform_matrix(Transform2D.IDENTITY)
+
+
+## The sniper's laser sight along where it would fire (its auto-aim), up to the first wall. Everyone
+## sees it: the sniper is strong, so it can't hide.
+func _draw_sniper_sight(holder: Fighter, pos: Vector2) -> void:
+	var dir := sim.weapons.aim_for(holder, null, SNIPER_SIGHT_LENGTH)
+	var from := pos + dir * (TuningDB.t.fighter_radius + 30.0)
+	var to := pos + dir * SNIPER_SIGHT_LENGTH
+	var hit := sim.weapons.cast(from, to)
+	if not hit.is_empty():
+		to = hit["position"]
+	draw_line(from, to, SNIPER_SIGHT, 2.0, true)
+	draw_circle(to, 5.0, Color(SNIPER_SIGHT, 0.9))
 
 
 ## An energy shield: a curved plate facing +x.

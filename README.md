@@ -2,7 +2,7 @@
 
 Zero-g grapple brawler for phones, made with Godot 4.7. Tap to fire your rope, swing and slingshot
 around the arena, hook enemies and punch them as they fly past. Offline bots, LAN party play for up
-to 4 phones, 7 arenas, 8 modes and 17 weapons.
+to 4 phones, 7 arenas, 8 modes, 19 weapons and 4 pickups.
 
 ## Download (Android)
 

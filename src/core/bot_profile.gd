@@ -26,6 +26,11 @@ const PROFILE_DIR: String = "res://data/bots/"
 @export var weapon_interest: float = 0.5
 ## Shots per second attempted while armed and in range.
 @export var fire_rate: float = 2.0
+## The player has to stay in sight this long before the bot shoots or ropes them (s): no snap shots
+## the instant someone comes round a corner.
+@export var acquire_time: float = 0.4
+## Share of the target's motion the bot leads its shots and ropes by (1 = perfect lead).
+@export var lead_skill: float = 0.6
 
 @export_group("Behavior")
 ## Perception runs every this many ticks (0.1 s).

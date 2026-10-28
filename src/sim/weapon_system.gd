@@ -7,6 +7,8 @@ extends RefCounted
 ##   - A rope fetches an item (Rope FETCH mode); it is equipped on contact. Grabbing a second weapon
 ##     drops the first with a small push.
 ##   - Fire: guns shoot with light auto-aim and recoil; an empty gun is thrown; blades swing.
+##   - Consumables (health, armor, haste, power) spawn and float like weapons but are used at once
+##     when roped in or flown through.
 ##   - Projectiles hit the first wall or fighter on their path; a well-timed melee parries them.
 ##   - WPN-04: now and then a legendary weapon is announced, then appears in a dangerous spot (next
 ##     to a vent, a tank or a black hole, or mid-arena).
@@ -177,7 +179,8 @@ func _pick_def() -> WeaponDef:
 	for def in _defs:
 		if def.spawn_weight <= 0.0 or def.legendary:
 			continue
-		if not allowed.is_empty() and not def.id in allowed:
+		# Modes narrow the weapons; pickups still show up.
+		if not allowed.is_empty() and not def.id in allowed and def.kind != WeaponDef.Kind.CONSUMABLE:
 			continue
 		pool.append(def)
 		total += def.spawn_weight
@@ -209,6 +212,11 @@ func _step_items(tick: int) -> void:
 			WeaponItem.State.FLOATING:
 				item.angle += item.spin * SimIds.DT
 				_drift(item, t.weapon_radius)
+				if item.def.kind == WeaponDef.Kind.CONSUMABLE and sim.authoritative:
+					var taker := _toucher(item)
+					if taker != null:
+						consume(taker, item)
+						continue
 				if tick >= item.expire_tick:
 					items.erase(item)
 					sim.queue_event(&"weapon_despawned", [item.id, item.pos])
@@ -232,8 +240,27 @@ func _float_free(item: WeaponItem, tick: int) -> void:
 	item.expire_tick = tick + SimIds.ticks(TuningDB.t.weapon_lifetime)
 
 
+## The first living fighter touching a floating item, or null.
+func _toucher(item: WeaponItem) -> Fighter:
+	var reach := TuningDB.t.fighter_radius + TuningDB.t.weapon_radius
+	for f in sim.fighters:
+		if not f.is_ko() and f.global_position.distance_to(item.pos) <= reach:
+			return f
+	return null
+
+
+## A consumable reached a fighter: it takes effect and is gone.
+func consume(fighter: Fighter, item: WeaponItem) -> void:
+	items.erase(item)
+	fighter.apply_consumable(item.def, sim.tick)
+	sim.queue_event(&"consumable_used", [fighter.fighter_id, item.def.id, fighter.global_position])
+
+
 ## A rope reached its fetched item: equip it, dropping any weapon already held (§6.3).
 func equip(fighter: Fighter, item: WeaponItem) -> void:
+	if item.def.kind == WeaponDef.Kind.CONSUMABLE:
+		consume(fighter, item)
+		return
 	var current := held_by(fighter)
 	if current != null and current != item:
 		drop(fighter, -fighter.facing)

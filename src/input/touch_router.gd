@@ -150,7 +150,7 @@ func release_rope() -> void:
 		_pending.rope_release = true
 
 
-## HIT button. aim: the direction the player dragged it, or zero for auto-aim.
+## KNIFE (melee) button. aim: the direction the player dragged it, or zero for auto-aim.
 func queue_melee(aim: Vector2 = Vector2.ZERO) -> void:
 	_pending.melee = true
 	if aim != Vector2.ZERO:

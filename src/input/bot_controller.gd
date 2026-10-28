@@ -10,12 +10,15 @@ extends RefCounted
 ##       rope the anchor that leads most away from the danger.
 ##   2. Being pulled: with escape_chance (once per pull), rope the anchor most away from the puller.
 ##   3. Melee: the player is close and closing, or arriving from the bot's own pull.
+##   Sight: walls of every kind block it, and the player must stay in sight for acquire_time before
+##   rules 3b and 4 shoot or rope them. Shots and ropes lead the target by lead_skill of its motion.
 ##   3b. Armed (§6.3): shoot at the player in range and in sight (fire_rate per second), throw an empty
 ##       gun from close range. A blade just extends the melee reach. Phase 6 weapons: projectile
 ##       ones are aimed like guns (explosives not point-blank); repulsor, magnet and thruster are
 ##       used when they'd help. A thrusting bot steers at its target; in a rope duel it taps.
 ##   4. Rope the player when in range, in sight and pullable (aggression attempts per second).
-##   4b. Unarmed: rope a floating weapon in reach (weapon_interest per perception).
+##   4b. Unarmed: rope a floating weapon in reach (weapon_interest per perception). Armed or not, rope
+##       a pickup in reach that would help (health when hurt, armor when low, haste, power).
 ##   5. Clinging too long, or drifting slowly (or, far from a mode goal (§6.5), clinging at all or
 ##      flying the wrong way): grapple to an anchor that keeps a good distance and
 ##      can see the player. While the player is ropeable a clinging bot stays put instead, so rule 4
@@ -27,8 +30,8 @@ const HAZARD_DANGER: float = 0.25
 ## Closer than this to its mode goal, a bot fights normally (px).
 const GOAL_REACHED: float = 260.0
 ## Phase 6 weapons a bot aims and fires like a gun, and the ones it won't fire at close range.
-const AIMED_SPECIALS: Array[StringName] = [&"rocket", &"laser", &"boomerang", &"harpoon", &"freeze", &"sticky", &"gravity", &"black_hole_bomb", &"tether_mine", &"tether_rope"]
-const POINT_BLANK_UNSAFE: Array[StringName] = [&"rocket", &"sticky", &"black_hole_bomb", &"gravity"]
+const AIMED_SPECIALS: Array[StringName] = [&"rocket", &"laser", &"boomerang", &"harpoon", &"freeze", &"sticky", &"gravity", &"black_hole_bomb", &"tether_mine", &"prox_mine", &"tether_rope"]
+const POINT_BLANK_UNSAFE: Array[StringName] = [&"rocket", &"sticky", &"black_hole_bomb", &"gravity", &"prox_mine"]
 ## Rope-duel taps per second per point of fire_rate.
 const DUEL_TAPS_PER_FIRE: float = 2.5
 ## A goal anchor has to bring the bot at least this much closer (px).
@@ -59,6 +62,9 @@ var _grapple_from: Vector2 = Vector2.INF
 var _grapple_to: Vector2 = Vector2.INF
 var _blocked: Dictionary = {}
 var _escape_rolled: bool = false
+## Since when the current target has been in sight (-1: not in sight), and who that target is.
+var _seen_since: int = -1
+var _seen_id: int = -1
 
 
 func _init(bot_fighter: Fighter, match_sim: MatchSim, bot_profile: BotProfile, bot_anchors: Array[Vector2]) -> void:
@@ -86,7 +92,7 @@ func build_command(tick: int) -> InputCommand:
 		return cmd
 	if sim.special_weapons.is_thrusting(fighter, tick):
 		var chase := _nearest_enemy()
-		if chase != null:
+		if chase != null and _in_sight(chase.global_position):
 			cmd.steer = (chase.global_position - fighter.global_position).normalized()
 	if (tick + fighter.fighter_id) % profile.perception_interval_ticks == 0:
 		_think(tick, cmd)
@@ -96,6 +102,7 @@ func build_command(tick: int) -> InputCommand:
 func _think(tick: int, cmd: InputCommand) -> void:
 	var t := TuningDB.t
 	var target := _nearest_enemy()
+	var acquired := _track_sight(target, tick)
 	if _grapple_from != Vector2.INF and fighter.is_clinging() and not fighter.rope.is_out():
 		if fighter.global_position.distance_to(_grapple_from) < STUCK_DISTANCE:
 			_blocked[_grapple_to] = tick + SimIds.ticks(BLOCK_TIME)
@@ -141,17 +148,17 @@ func _think(tick: int, cmd: InputCommand) -> void:
 
 	# Rule 3b.
 	var held := sim.weapons.held_by(fighter)
-	if target != null and held != null and _use_special(held, target, tick, cmd):
+	if target != null and held != null and acquired and _use_special(held, target, tick, cmd):
 		return
 	if target != null and held != null and _aimable(held.def) and tick >= fighter.fire_ready_tick:
 		var dist := fighter.global_position.distance_to(target.global_position)
 		var reach := held.def.projectile_speed * maxf(held.def.projectile_lifetime, 0.6) * 0.9 if held.ammo > 0 else Melee.reach(fighter, t) * 5.0
 		var too_close := held.def.projectile_kind in POINT_BLANK_UNSAFE and held.ammo > 0 and dist < maxf(held.def.effect_radius, 250.0)
-		if dist <= reach and not too_close and _in_sight(target.global_position):
+		if dist <= reach and not too_close and acquired:
 			var chance := profile.fire_rate * float(profile.perception_interval_ticks) / SimIds.TICK_RATE
 			if sim.rng.randf() < chance:
 				var speed := held.def.projectile_speed if held.ammo > 0 else t.throw_speed
-				var lead := target.global_position + target.velocity * (dist / speed)
+				var lead := target.global_position + target.velocity * (dist / speed) * profile.lead_skill
 				var error := deg_to_rad(sim.rng.randf_range(-profile.aim_error_deg, profile.aim_error_deg))
 				cmd.fire = true
 				cmd.aim_dir = (lead - fighter.global_position).normalized().rotated(error)
@@ -160,19 +167,19 @@ func _think(tick: int, cmd: InputCommand) -> void:
 
 	# Rule 4.
 	var ropeable := target != null and _ropeable(target, tick)
-	if ropeable and fighter.can_fire_rope(tick):
+	if ropeable and acquired and fighter.can_fire_rope(tick):
 		var chance := profile.aggression * float(profile.perception_interval_ticks) / SimIds.TICK_RATE
 		if sim.rng.randf() < chance:
 			var dist := fighter.global_position.distance_to(target.global_position)
-			var lead := target.global_position + target.velocity * (dist / t.hook_speed)
+			var lead := target.global_position + target.velocity * (dist / t.hook_speed) * profile.lead_skill
 			var error := deg_to_rad(sim.rng.randf_range(-profile.aim_error_deg, profile.aim_error_deg))
 			var aim := fighter.global_position + (lead - fighter.global_position).rotated(error)
 			_fire(cmd, aim, &"rope_player")
 			return
 
 	# Rule 4b.
-	if held == null and fighter.can_fire_rope(tick) and not fighter.rope.is_out():
-		var item := _reachable_weapon()
+	if fighter.can_fire_rope(tick) and not fighter.rope.is_out():
+		var item := _reachable_weapon(held != null)
 		if item != null and sim.rng.randf() < profile.weapon_interest:
 			var dist := fighter.global_position.distance_to(item.pos)
 			_fire(cmd, item.pos + item.vel * (dist / t.hook_speed), &"grab_weapon")
@@ -213,7 +220,8 @@ func _aimable(def: WeaponDef) -> bool:
 	return def.kind == WeaponDef.Kind.GUN or (def.kind == WeaponDef.Kind.SPECIAL and def.projectile_kind in AIMED_SPECIALS)
 
 
-## Repulsor up close, magnet when there's something to pull, thruster when the fight is far away.
+## Repulsor at a close enemy (or to break a pull), magnet when there's something to pull, thruster
+## when the fight is far away.
 func _use_special(held: WeaponItem, target: Fighter, tick: int, cmd: InputCommand) -> bool:
 	if held.def.kind != WeaponDef.Kind.SPECIAL or tick < fighter.fire_ready_tick or held.ammo <= 0:
 		return false
@@ -221,7 +229,8 @@ func _use_special(held: WeaponItem, target: Fighter, tick: int, cmd: InputComman
 	var use := false
 	match held.def.projectile_kind:
 		&"repulsor":
-			use = dist < held.def.effect_radius * 0.7 or fighter.pulled_by_id >= 0
+			use = dist < held.def.effect_radius * 0.8 or fighter.pulled_by_id >= 0
+			cmd.aim_dir = (target.global_position - fighter.global_position).normalized()
 		&"magnet":
 			use = dist < held.def.effect_radius and (target.weapon_id >= 0 or _reachable_weapon() != null)
 		&"thruster":
@@ -257,18 +266,44 @@ func _nearest_enemy() -> Fighter:
 	return best
 
 
-## The nearest floating weapon within rope range and in sight, or null.
-func _reachable_weapon() -> WeaponItem:
+## The nearest floating weapon or useful pickup within rope range and in sight, or null. Armed bots
+## only look at pickups.
+func _reachable_weapon(pickups_only: bool = false) -> WeaponItem:
 	var best: WeaponItem = null
 	var best_dist := TuningDB.t.rope_range
 	for item in sim.weapons.items:
 		if item.state != WeaponItem.State.FLOATING:
+			continue
+		var pickup := item.def.kind == WeaponDef.Kind.CONSUMABLE
+		if (pickups_only and not pickup) or (pickup and not _wants(item.def)):
 			continue
 		var d := fighter.global_position.distance_to(item.pos)
 		if d < best_dist and _in_sight(item.pos):
 			best = item
 			best_dist = d
 	return best
+
+
+## Is this pickup worth a rope right now?
+func _wants(def: WeaponDef) -> bool:
+	var t := TuningDB.t
+	match def.projectile_kind:
+		&"health":
+			return fighter.hp < t.max_hp * 0.7
+		&"armor":
+			return fighter.armor < t.max_armor * 0.5
+	return true
+
+
+## Keeps track of how long the target has been in sight; true once it is acquired (acquire_time).
+func _track_sight(target: Fighter, tick: int) -> bool:
+	if target == null or not _in_sight(target.global_position):
+		_seen_since = -1
+		return false
+	if _seen_id != target.fighter_id or _seen_since < 0:
+		_seen_id = target.fighter_id
+		_seen_since = tick
+	return tick - _seen_since >= SimIds.ticks(profile.acquire_time)
 
 
 ## Ticks until the pulled target is half a melee range away, at its current closing speed.
@@ -449,7 +484,8 @@ func _in_sight(point: Vector2) -> bool:
 	return _ray(fighter.global_position, point).is_empty()
 
 
-func _ray(from: Vector2, to: Vector2, mask: int = Layers.WORLD_HOOKABLE) -> Dictionary:
+## Smooth panels block sight and ropes as much as hookable walls do.
+func _ray(from: Vector2, to: Vector2, mask: int = Layers.HOOK_MASK) -> Dictionary:
 	var exclude: Array[RID] = [fighter.get_rid()]
 	var query := PhysicsRayQueryParameters2D.create(from, to, mask, exclude)
 	return fighter.get_world_2d().direct_space_state.intersect_ray(query)

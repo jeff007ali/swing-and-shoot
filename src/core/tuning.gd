@@ -6,15 +6,15 @@ extends Resource
 @export_group("Body")
 @export_range(10, 60, 1) var fighter_radius: float = 28.0
 @export_range(0, 3, 0.01) var drag: float = 0.25
-@export_range(200, 4000, 10) var max_speed: float = 1800.0
+@export_range(200, 4000, 10) var max_speed: float = 2000.0
 
 @export_group("Rope")
-@export_range(500, 8000, 50) var hook_speed: float = 3600.0
-@export_range(200, 1400, 10) var rope_range: float = 640.0
-@export_range(0, 2, 0.01) var rope_cooldown: float = 0.35
+@export_range(500, 8000, 50) var hook_speed: float = 4400.0
+@export_range(200, 1400, 10) var rope_range: float = 720.0
+@export_range(0, 2, 0.01) var rope_cooldown: float = 0.25
 @export_range(0, 1, 0.01) var rope_retract_time: float = 0.1
-@export_range(0, 12000, 50) var reel_accel: float = 4200.0
-@export_range(100, 4000, 10) var reel_max_speed: float = 1400.0
+@export_range(0, 12000, 50) var reel_accel: float = 5400.0
+@export_range(100, 4000, 10) var reel_max_speed: float = 1650.0
 @export_range(0.2, 6, 0.1) var reel_max_time: float = 2.0
 
 @export_group("Orbit and swing")
@@ -39,10 +39,12 @@ extends Resource
 @export_group("Cling and kick")
 @export_range(0, 5, 0.05) var cling_time: float = 1.2
 @export_range(0, 400, 5) var cling_drift_speed: float = 60.0
-@export_range(100, 2500, 10) var kick_speed: float = 750.0
+@export_range(100, 2500, 10) var kick_speed: float = 950.0
 @export_range(0, 0.5, 0.01) var kick_window: float = 0.12
 @export_range(5, 150, 1) var swipe_min_dist: float = 30.0
 @export_range(0, 1, 0.01) var kick_min_normal_dot: float = 0.2
+## After letting go of a moving surface (turbine) a fighter can't cling to it again for this long (s).
+@export_range(0, 2, 0.05) var moving_release_grace: float = 0.75
 
 @export_group("Touch and aim")
 @export_range(0.05, 1, 0.01) var hold_threshold: float = 0.20
@@ -115,6 +117,14 @@ extends Resource
 @export_range(0, 3000, 10) var throw_knockback: float = 650.0
 ## Hitstop on a fighter hit by a projectile.
 @export_range(0, 20, 1) var projectile_hitstop_ticks: int = 2
+
+@export_group("Pickups")
+## Haste pickup: reel, kick and top speed x this, rope cooldown / this.
+@export_range(1, 3, 0.05) var haste_mult: float = 1.3
+## Power pickup: damage dealt x this.
+@export_range(1, 3, 0.05) var power_mult: float = 1.5
+## Armor pickup: soaks damage before HP, up to this much.
+@export_range(0, 200, 1) var max_armor: float = 60.0
 
 @export_group("Combat depth")
 ## A hit with at least this knockback knocks the weapon loose (HP-03).

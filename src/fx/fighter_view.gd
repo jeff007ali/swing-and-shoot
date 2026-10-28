@@ -1,8 +1,9 @@
 class_name FighterView
 extends Node2D
 ## Draws one fighter (§4.11): the skin's sprite posed for the current state, a speed trail, the rope
-## range circle for the local player, and an overlay with the melee slash, the pull-immunity ring and
-## (for enemies) a small HP bar. Visual only: it reads the fighter and never changes it.
+## range circle for the local player, and an overlay with the knife slash (wind-up, sweep, recover),
+## the pull-immunity ring, pickup auras (armor, haste, power) and (for enemies) a small HP bar.
+## Visual only: it reads the fighter and never changes it.
 
 ## Frozen fighters (§6.6) look icy.
 const ICE_TINT: Color = Color(0.6, 0.85, 1.4)
@@ -21,6 +22,17 @@ const IMMUNE_COLOR: Color = Color(0.45, 0.75, 1.0, 0.45)
 const HP_BAR_SIZE: Vector2 = Vector2(64, 7)
 const HP_BAR_OFFSET: float = -52.0
 const SLASH_COLOR: Color = Color(1.0, 0.95, 0.8)
+## The knife: hand distance from the center, handle and blade length (px), and how far the wind-up
+## pulls it back past the start of the arc (rad).
+const KNIFE_HAND: float = 22.0
+const KNIFE_HANDLE: float = 16.0
+const KNIFE_BLADE: float = 46.0
+const KNIFE_WINDUP: float = 0.5
+## The body leans this far into an active swing (px).
+const LUNGE_OFFSET: float = 10.0
+const ARMOR_COLOR: Color = Color(0.35, 0.7, 1.0)
+const HASTE_COLOR: Color = Color(1.0, 0.9, 0.25)
+const POWER_COLOR: Color = Color(1.0, 0.35, 0.6)
 ## LAN corrections (§6.2) are blended out over ~100 ms (1/s, exponential).
 const CORRECTION_RATE: float = 30.0
 
@@ -129,11 +141,16 @@ func _update_pose(delta: float) -> void:
 				_bob_time += delta
 				target_rot = sin(_bob_time * BOB_SPEED) * BOB_ANGLE
 				free_pose = true
-	if fighter.melee_phase(_tick()) != SimIds.MeleePhase.NONE:
-		# Punching: lean into the swing.
+	var lunge := Vector2.ZERO
+	var phase := fighter.melee_phase(_tick())
+	if phase != SimIds.MeleePhase.NONE:
+		# Slashing: lean into the swing, and lunge with the active frames.
 		anim = &"kick"
 		target_rot = fighter.melee_dir.angle() + PI * 0.5
 		free_pose = false
+		if phase == SimIds.MeleePhase.ACTIVE:
+			lunge = fighter.melee_dir * LUNGE_OFFSET
+	_sprite.position = _sprite.position.lerp(lunge, 1.0 - exp(-TURN_RATE * 2.0 * delta))
 	_play(anim)
 	_sprite.rotation = lerp_angle(_sprite.rotation, target_rot, 1.0 - exp(-TURN_RATE * delta))
 	_sprite.flip_h = free_pose and fighter.facing.x < 0.0
@@ -155,7 +172,8 @@ func _update_flash(delta: float) -> void:
 
 
 func _update_trail() -> void:
-	var fast := fighter.velocity.length() >= TRAIL_MIN_SPEED and not fighter.is_ko()
+	var min_speed := TRAIL_MIN_SPEED * (0.4 if fighter.is_hasted(_tick()) else 1.0)
+	var fast := fighter.velocity.length() >= min_speed and not fighter.is_ko()
 	if fast:
 		_trail.add_point(interpolated_position())
 		while _trail.get_point_count() > TRAIL_POINTS:
@@ -169,6 +187,7 @@ func _draw_overlay() -> void:
 	var t := TuningDB.t
 	if fighter.is_pull_immune(tick):
 		_overlay.draw_arc(Vector2.ZERO, t.fighter_radius + 6.0, 0.0, TAU, 40, IMMUNE_COLOR, 3.0, true)
+	_draw_pickup_auras(tick)
 	var phase := fighter.melee_phase(tick)
 	if phase == SimIds.MeleePhase.ACTIVE or phase == SimIds.MeleePhase.RECOVERY:
 		var elapsed := tick - fighter.melee_start_tick - t.melee_startup_ticks
@@ -179,12 +198,85 @@ func _draw_overlay() -> void:
 			for i in 3:
 				var r := t.melee_range * (0.6 + 0.15 * i)
 				_overlay.draw_arc(Vector2.ZERO, r, mid - half, mid + half, 24, Color(SLASH_COLOR, fade * (0.9 - 0.25 * i)), 8.0 - 2.0 * i, true)
+	if phase != SimIds.MeleePhase.NONE and not _holds_blade():
+		_draw_knife(tick)
 	_draw_specials(tick)
 	if not fighter.is_local_player:
 		var frac := clampf(fighter.hp / t.max_hp, 0.0, 1.0)
 		var origin := Vector2(-HP_BAR_SIZE.x * 0.5, HP_BAR_OFFSET)
 		_overlay.draw_rect(Rect2(origin, HP_BAR_SIZE), Color(0, 0, 0, 0.55))
 		_overlay.draw_rect(Rect2(origin, Vector2(HP_BAR_SIZE.x * frac, HP_BAR_SIZE.y)), Color(1, 0.35, 0.3).lerp(Color(0.5, 1.0, 0.6), frac))
+
+
+func _holds_blade() -> bool:
+	var item := fighter.sim.weapons.held_by(fighter) if fighter.sim != null else null
+	return item != null and item.def.kind == WeaponDef.Kind.BLADE
+
+
+## The knife (the default melee): pulled back during the wind-up, swept across the arc during the
+## active frames with a smear behind it, then held at the end of the arc while it fades.
+func _draw_knife(tick: int) -> void:
+	var t := TuningDB.t
+	var elapsed := float(tick - fighter.melee_start_tick) + Engine.get_physics_interpolation_fraction()
+	var startup := float(t.melee_startup_ticks)
+	var active := float(t.melee_active_ticks)
+	var recovery := float(t.melee_recovery_ticks)
+	var half := deg_to_rad(t.melee_arc_deg) * 0.5
+	var mid := fighter.melee_dir.angle()
+	var from := mid - half
+	var angle := from
+	var alpha := 1.0
+	if elapsed < startup:
+		angle = from - KNIFE_WINDUP * (elapsed / maxf(startup, 1.0))
+	elif elapsed < startup + active:
+		var k := (elapsed - startup) / active
+		angle = from + half * 2.0 * (1.0 - pow(1.0 - k, 3.0))
+		_draw_smear(from, angle, t.melee_range)
+	else:
+		var k := clampf((elapsed - startup - active) / maxf(recovery, 1.0), 0.0, 1.0)
+		angle = lerp_angle(mid + half, mid, k * 0.6)
+		alpha = 1.0 - k
+	var dir := Vector2.from_angle(angle)
+	var side := dir.orthogonal()
+	var hand := dir * KNIFE_HAND
+	var guard := hand + dir * KNIFE_HANDLE
+	var tip := guard + dir * KNIFE_BLADE
+	var blade := PackedVector2Array([guard - side * 7.0, tip, guard + side * 4.0])
+	_overlay.draw_polyline(blade + PackedVector2Array([blade[0]]), Color(0.1, 0.1, 0.15, alpha * 0.8), 4.0, true)
+	_overlay.draw_colored_polygon(blade, Color(0.88, 0.92, 1.0, alpha))
+	_overlay.draw_line(guard - side * 7.0, tip, Color(1, 1, 1, alpha), 2.0, true)
+	_overlay.draw_line(hand, guard, Color(0.35, 0.24, 0.18, alpha), 9.0, true)
+	_overlay.draw_line(guard - side * 9.0, guard + side * 9.0, Color(0.75, 0.75, 0.8, alpha), 5.0, true)
+
+
+## The blur of the blade sweeping from `from` to `to` (rad).
+func _draw_smear(from: float, to: float, reach: float) -> void:
+	var steps := 10
+	var pts := PackedVector2Array()
+	for i in steps + 1:
+		pts.append(Vector2.from_angle(lerpf(from, to, float(i) / steps)) * reach)
+	for i in range(steps, -1, -1):
+		pts.append(Vector2.from_angle(lerpf(from, to, float(i) / steps)) * (KNIFE_HAND + KNIFE_HANDLE))
+	if pts.size() >= 3 and absf(to - from) > 0.05:
+		_overlay.draw_colored_polygon(pts, Color(SLASH_COLOR, 0.25))
+
+
+## Pickups: an armor bubble that thins as it is used up, a crackling haste ring, a pulsing power glow.
+func _draw_pickup_auras(tick: int) -> void:
+	var t := TuningDB.t
+	var r := t.fighter_radius
+	var now := Time.get_ticks_msec() / 1000.0
+	if fighter.armor > 0.0:
+		var k := clampf(fighter.armor / t.max_armor, 0.0, 1.0)
+		_overlay.draw_circle(Vector2.ZERO, r + 12.0, Color(ARMOR_COLOR, 0.12))
+		_overlay.draw_arc(Vector2.ZERO, r + 12.0, 0.0, TAU, 40, Color(ARMOR_COLOR, 0.8), 2.0 + 5.0 * k, true)
+	if fighter.is_powered(tick):
+		var pulse := 0.5 + 0.5 * sin(now * 10.0)
+		_overlay.draw_arc(Vector2.ZERO, r + 18.0 + 4.0 * pulse, 0.0, TAU, 40, Color(POWER_COLOR, 0.35 + 0.4 * pulse), 4.0, true)
+	if fighter.is_hasted(tick):
+		for i in 6:
+			var a := now * 9.0 + TAU * i / 6.0
+			_overlay.draw_arc(Vector2.ZERO, r + 8.0, a, a + 0.5, 6, Color(HASTE_COLOR, 0.85), 3.0, true)
 
 
 ## Phase 6 states (§6.6): an ice block when frozen, the thruster flame, the magnet's field.

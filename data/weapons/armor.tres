@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="WeaponDef" format=3]
+
+[ext_resource type="Script" path="res://src/core/weapon_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"armor"
+display_name = "Armor"
+kind = 3
+glow_color = Color(0.35, 0.7, 1, 1)
+spawn_weight = 1.8
+sprite_size = 56.0
+ammo = 0
+projectile_kind = &"armor"
+effect_strength = 35.0
+effect_time = 0.0

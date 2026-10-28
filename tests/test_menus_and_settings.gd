@@ -120,7 +120,7 @@ func test_tuning_preset_round_trip() -> void:
 	assert_eq(TuningDB.save_preset(TEST_PRESET), OK)
 	assert_has(TuningDB.list_presets(), TEST_PRESET)
 	TuningDB.reset_to_default()
-	assert_eq(TuningDB.t.kick_speed, 750.0)
+	assert_eq(TuningDB.t.kick_speed, 950.0)
 	assert_true(TuningDB.load_preset(TEST_PRESET))
 	assert_eq(TuningDB.t.kick_speed, 999.0)
 	assert_eq(TuningDB.t.melee_active_ticks, 9)

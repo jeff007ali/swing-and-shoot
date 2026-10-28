@@ -17,3 +17,8 @@ func _ready() -> void:
 func step(tick: int) -> void:
 	rotation = start_angle + spin_direction * TuningDB.t.turbine_omega * float(tick) / SimIds.TICK_RATE
 	sync_physics_transform()
+
+
+func surface_velocity(point: Vector2) -> Vector2:
+	var r := point - global_position
+	return Vector2(-r.y, r.x) * spin_direction * TuningDB.t.turbine_omega

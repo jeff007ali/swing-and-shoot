@@ -15,14 +15,16 @@ extends RefCounted
 ##   sticky       grenade that sticks to a fighter, a rope's owner or a wall, then blows
 ##   gravity      grenade that opens a gravity well for a few seconds
 ##   black_hole_bomb  a stronger well whose core KOs and swallows ropes and weapons (legendary)
-##   repulsor     pushes everything away, breaks pulls on you
+##   repulsor     a cone blast ahead: slams enemies away hard enough to disarm, turns shots around,
+##                breaks pulls on you and kicks you backward
 ##   tether_mine  sticks to a wall; ropes the first enemy that drifts close
+##   prox_mine    sticks to a wall; explodes when an enemy comes close
 ##   tether_rope  ties the enemy it hits to the nearest other enemy; they smash together
 ##   shield       blocks shots from the front; an enemy rope rips it away
 ##   thruster     for a while, holding a touch steers instead of roping
 
-const CATCHABLE: Array[StringName] = [&"rocket", &"sticky", &"gravity", &"black_hole_bomb", &"boomerang", &"tether_mine"]
-const THROWN_KINDS: Array[StringName] = [&"sticky", &"gravity", &"black_hole_bomb", &"tether_mine"]
+const CATCHABLE: Array[StringName] = [&"rocket", &"sticky", &"gravity", &"black_hole_bomb", &"boomerang", &"tether_mine", &"prox_mine"]
+const THROWN_KINDS: Array[StringName] = [&"sticky", &"gravity", &"black_hole_bomb", &"tether_mine", &"prox_mine"]
 ## Fire button labels on the HUD.
 const USE_LABELS: Dictionary = {
 	&"magnet": "MAGNET", &"repulsor": "BLAST", &"thruster": "BOOST", &"shield": "BASH", &"boomerang": "THROW",
@@ -39,6 +41,11 @@ const FREEZE_RAM_DAMAGE: float = 0.022
 const FREEZE_RAM_COOLDOWN: float = 0.5
 const WELL_CORE: float = 70.0
 const MINE_ARM: float = 0.5
+## Proximity mines arm slower, so one dropped at your feet in a fight can't be used point-blank.
+const PROX_MINE_ARM: float = 0.9
+## Repulsor: the blast covers this cone ahead of the aim, plus everything this close all around.
+const REPULSE_CONE_DEG: float = 110.0
+const REPULSE_CLOSE: float = 90.0
 const MINE_HOLD: float = 1.5
 const TETHER_ARRIVE: float = 80.0
 const WHIP_SPEED: float = 1600.0
@@ -132,7 +139,7 @@ func fire(fighter: Fighter, item: WeaponItem, cmd: InputCommand, tick: int) -> v
 			thrusters[fighter.fighter_id] = tick + SimIds.ticks(def.effect_time)
 		&"repulsor":
 			item.ammo -= 1
-			_repulse(fighter, def, tick)
+			_repulse(fighter, def, aim, tick)
 		_:
 			item.ammo -= 1
 			var p := _projectile(fighter, def, aim, tick)
@@ -255,12 +262,17 @@ func step_projectile(p: Projectile, tick: int) -> void:
 				wells.append({"id": p.id, "pos": hit.get("point", p.pos), "radius": p.def.effect_radius, "strength": p.def.effect_strength,
 					"until": tick + SimIds.ticks(p.def.effect_time), "owner": p.owner_id, "core": core})
 				sim.queue_event(&"well_opened", [hit.get("point", p.pos), p.def.effect_radius, core > 0.0])
-		&"tether_mine":
+		&"tether_mine", &"prox_mine":
+			var prox := kind == &"prox_mine"
 			if type == &"world" or type == &"blocked" or tick >= p.expire_tick:
 				_remove(p)
-				mines.append({"id": p.id, "pos": hit.get("point", p.pos), "armed": tick + SimIds.ticks(MINE_ARM),
-					"until": tick + SimIds.ticks(p.def.effect_time), "owner": p.owner_id, "radius": p.def.effect_radius, "strength": p.def.effect_strength})
+				mines.append({"id": p.id, "pos": hit.get("point", p.pos), "armed": tick + SimIds.ticks(PROX_MINE_ARM if prox else MINE_ARM),
+					"until": tick + SimIds.ticks(p.def.effect_time), "owner": p.owner_id, "radius": p.def.effect_radius, "strength": p.def.effect_strength,
+					"kind": kind, "damage": p.damage, "knockback": p.knockback})
 				sim.queue_event(&"mine_placed", [hit.get("point", p.pos)])
+			elif type == &"fighter" and prox:
+				_remove(p)
+				_explode(hit["point"], p.def.effect_radius * 2.0, p.damage, p.knockback, p.owner_id, tick, &"mine")
 			elif type == &"fighter":
 				_remove(p)
 				var victim: Fighter = hit["fighter"]
@@ -406,7 +418,7 @@ func _step_boomerang(p: Projectile, tick: int) -> void:
 			sim.queue_event(&"rope_cut", [owner.fighter_id, f.fighter_id, point])
 
 
-func _repulse(user: Fighter, def: WeaponDef, tick: int) -> void:
+func _repulse(user: Fighter, def: WeaponDef, aim: Vector2, tick: int) -> void:
 	var at := user.global_position
 	var radius := def.effect_radius
 	if user.pulled_by_id >= 0:
@@ -414,27 +426,36 @@ func _repulse(user: Fighter, def: WeaponDef, tick: int) -> void:
 		if puller != null and puller.rope.pull_target == user:
 			puller.rope.release(false)
 	for f in sim.fighters:
-		if f == user or f.is_ko():
+		if f == user or f.is_ko() or not _in_repulse(at, aim, f.global_position, radius):
 			continue
 		var offset := f.global_position - at
 		var d := offset.length()
-		if d >= radius:
-			continue
-		var dir := offset / d if d > 0.001 else Vector2.RIGHT
-		var push := dir * def.effect_strength * (1.0 - d / radius * 0.5)
+		var dir := offset / d if d > 0.001 else aim
+		var push := dir * def.effect_strength * (1.0 - d / radius * 0.4)
 		if sim.authoritative and sim.are_enemies(user, f) and f.can_be_hit(tick):
-			f.take_hit(tick, user.fighter_id, def.projectile_damage, push, 3, &"repulsor")
+			f.take_hit(tick, user.fighter_id, def.projectile_damage, push, 5, &"repulsor")
 		elif not sim.are_enemies(user, f):
 			f.leave_surface()
 			f.velocity += push
 	for item in sim.weapons.items:
-		if item.state != WeaponItem.State.HELD and item.pos.distance_to(at) < radius:
+		if item.state != WeaponItem.State.HELD and _in_repulse(at, aim, item.pos, radius):
 			item.vel += (item.pos - at).normalized() * def.effect_strength * 0.5
 	for p in sim.weapons.projectiles:
-		if p.pos.distance_to(at) < radius and p.owner_id != user.fighter_id:
+		if p.owner_id != user.fighter_id and _in_repulse(at, aim, p.pos, radius):
 			p.vel = (p.pos - at).normalized() * p.vel.length()
 			p.owner_id = user.fighter_id
-	sim.queue_event(&"repulsed", [user.fighter_id, at, radius])
+	sim.queue_event(&"repulsed", [user.fighter_id, at, radius, aim])
+
+
+## Inside the repulsor blast: in range and in the cone ahead, or right next to the user.
+static func _in_repulse(at: Vector2, aim: Vector2, point: Vector2, radius: float) -> bool:
+	var offset := point - at
+	var d := offset.length()
+	if d >= radius:
+		return false
+	if d <= REPULSE_CLOSE:
+		return true
+	return rad_to_deg(absf(aim.angle_to(offset))) <= REPULSE_CONE_DEG * 0.5
 
 
 ## Blast with falloff: rockets, grenades. Damages breakables and sets off tanks.
@@ -621,8 +642,11 @@ func _step_mines(tick: int) -> void:
 				continue
 			if f.global_position.distance_to(at) < float(m["radius"]):
 				mines.erase(m)
-				_tether(f.fighter_id, -1, at, tick + SimIds.ticks(MINE_HOLD + 0.8), m["strength"], &"mine", int(m["owner"]))
 				sim.queue_event(&"mine_triggered", [f.fighter_id, at])
+				if m.get("kind", &"tether_mine") == &"prox_mine":
+					_explode(at, float(m["radius"]) * 2.0, m["damage"], m["knockback"], int(m["owner"]), tick, &"mine")
+				else:
+					_tether(f.fighter_id, -1, at, tick + SimIds.ticks(MINE_HOLD + 0.8), m["strength"], &"mine", int(m["owner"]))
 				break
 
 

@@ -1,5 +1,6 @@
 extends Node
-## Named sound lookup (§3.7, §4.11). Each name maps to a few variations; one is picked at random per
+## Named sound lookup (§3.7, §4.11). Each name maps to a few variations (an .ogg in DIR unless the
+## name has an extension: tools/build_sfx.py writes .wav files); one is picked at random per
 ## play. Performance pass (§6.7): every variation has its own 2D player with a few voices of
 ## polyphony, so playing a sound never swaps a player's stream (that reset cost ~1 ms per sound).
 
@@ -17,6 +18,7 @@ const SOUNDS: Dictionary = {
 	&"slingshot": ["forceField_000", "forceField_001"],
 	&"cooldown": ["tick_001"],
 	&"melee_swing": ["forceField_002", "forceField_003"],
+	&"knife": ["knife_swish.wav"],
 	&"hit_light": ["impactPunch_medium_000", "impactPunch_medium_001"],
 	&"hit_heavy": ["impactPunch_heavy_000", "impactPunch_heavy_001"],
 	&"ko": ["explosionCrunch_000"],
@@ -25,6 +27,10 @@ const SOUNDS: Dictionary = {
 	&"shot_pistol": ["sfx_laser1", "sfx_laser2"],
 	&"shot_shotgun": ["laserLarge_000", "laserLarge_001"],
 	&"shot_retro": ["laserRetro_000", "laserRetro_001"],
+	&"shot_sniper": ["sniper_shot.wav"],
+	&"sniper_bolt": ["sniper_bolt.wav"],
+	&"pickup": ["confirmation_001"],
+	&"mine_beep": ["tick_001"],
 	&"weapon_spawn": ["sfx_twoTone"],
 	&"weapon_pick": ["sfx_shieldUp"],
 	&"weapon_drop": ["sfx_shieldDown"],
@@ -51,7 +57,7 @@ func _ready() -> void:
 		var variations: Array[AudioStream] = []
 		var players: Array[AudioStreamPlayer2D] = []
 		for file: String in SOUNDS[sound]:
-			var stream := load(DIR + file + ".ogg") as AudioStream
+			var stream := load(DIR + file + ("" if "." in file else ".ogg")) as AudioStream
 			variations.append(stream)
 			var player := AudioStreamPlayer2D.new()
 			player.stream = stream

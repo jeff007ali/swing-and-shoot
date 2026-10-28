@@ -5,7 +5,7 @@
 [resource]
 script = ExtResource("1_def")
 id = &"tut_06_combo"
-text = "Pull the dummy, then hit HIT as it flies past: SNAP!"
+text = "Pull the dummy, then tap KNIFE as it flies past: SNAP!"
 event = &"hit_landed"
 actor_arg = 0
 match_args = {4: true}

@@ -16,6 +16,11 @@ const SHAKE_COMBO: float = 0.75
 const SHAKE_KO: float = 0.5
 const COMBO_TEXT: String = "SNAP!"
 const COMBO_COLOR: Color = Color(1.0, 0.85, 0.3)
+## Pop text for each consumable pickup.
+const PICKUP_TEXT: Dictionary = {&"health": "+HP", &"armor": "+ARMOR", &"haste": "HASTE!", &"power": "POWER!"}
+## The sniper's tracer: drawn this far along the shot and faded over this long.
+const TRACER_LENGTH: float = 3300.0
+const TRACER_TIME: float = 0.25
 
 var local_fighter_id: int = -1
 var sim: MatchSim
@@ -91,10 +96,14 @@ func _ready() -> void:
 		_shockwave(at, radius * 0.5)
 		Sfx.play(&"slingshot" if not hole else &"explosion", at, 0.0, 0.5))
 	GameEvents.mine_triggered.connect(func(_id: int, at: Vector2) -> void: Sfx.play(&"alarm", at, -2.0, 1.4))
-	GameEvents.repulsed.connect(func(_id: int, at: Vector2, radius: float) -> void:
-		_shockwave(at, radius)
-		Sfx.play(&"parry", at, 0.0, 0.7)
-		_shake(0.25))
+	GameEvents.repulsed.connect(func(_id: int, at: Vector2, radius: float, dir: Vector2) -> void:
+		_shockwave(at, SpecialWeapons.REPULSE_CLOSE * 1.5)
+		_burst(SPARK, at, dir, Color(0.4, 1.0, 0.8), 40, radius * 2.2, SpecialWeapons.REPULSE_CONE_DEG * 0.5, 0.08, true)
+		_burst(PUFF, at, dir, Color(0.6, 1.0, 0.9, 0.5), 16, radius * 1.4, SpecialWeapons.REPULSE_CONE_DEG * 0.5, 0.16, false)
+		Sfx.play(&"parry", at, 2.0, 0.6)
+		Sfx.play(&"kick", at, 0.0, 0.7)
+		_shake(0.4))
+	GameEvents.consumable_used.connect(_on_consumable_used)
 	GameEvents.wrecking_ball.connect(func(_b: int, _v: int, at: Vector2) -> void:
 		_burst(SPARK, at, Vector2.UP, Color(0.7, 0.95, 1.0), 26, 650.0, 180.0, 0.07, true)
 		Sfx.play(&"hit_heavy", at, 2.0, 0.7)
@@ -187,7 +196,12 @@ func _on_kicked_off(fighter_id: int, direction: Vector2) -> void:
 
 
 func _on_melee_started(fighter_id: int, _direction: Vector2) -> void:
-	Sfx.play(&"melee_swing", _fighter_pos(fighter_id), -10.0, 1.8)
+	var f := _fighter(fighter_id)
+	var held := sim.weapons.held_by(f) if sim != null and f != null else null
+	if held != null and held.def.kind == WeaponDef.Kind.BLADE:
+		Sfx.play(&"melee_swing", _fighter_pos(fighter_id), -10.0, 1.8)
+	else:
+		Sfx.play(&"knife", _fighter_pos(fighter_id), -6.0, 1.0)
 
 
 func _on_hit_landed(attacker_id: int, victim_id: int, damage: float, _knockback: float, is_combo: bool) -> void:
@@ -243,8 +257,11 @@ func _on_weapon_despawned(_weapon_id: int, position: Vector2) -> void:
 	Sfx.play(&"weapon_gone", position, -16.0, 1.4)
 
 
-func _on_weapon_picked(fighter_id: int, _weapon_id: int, _def_id: StringName) -> void:
+func _on_weapon_picked(fighter_id: int, _weapon_id: int, def_id: StringName) -> void:
 	Sfx.play(&"weapon_pick", _fighter_pos(fighter_id), -8.0)
+	if def_id == &"sniper":
+		# Loud on purpose: everyone should know a sniper is in play.
+		Sfx.play(&"sniper_bolt", _fighter_pos(fighter_id), 4.0)
 	if fighter_id == local_fighter_id:
 		Haptics.pulse(20, 0.4)
 
@@ -258,10 +275,16 @@ func _on_weapon_fired(fighter_id: int, def_id: StringName, muzzle: Vector2, dire
 	var color := def.projectile_color if def != null else Color.WHITE
 	_burst(SPARK, muzzle, direction, color, 8, 500.0, 25.0, 0.05, true)
 	var sound := &"shot_pistol"
-	if def != null and def.recoil_impulse >= 500.0:
-		sound = &"shot_shotgun"
-		_shake(0.25)
-	Sfx.play(sound, muzzle, -6.0)
+	if def_id == &"sniper":
+		sound = &"shot_sniper"
+		_tracer(muzzle, direction, color)
+		_shake(0.5)
+		Sfx.play(sound, muzzle, 4.0)
+	else:
+		if def != null and def.recoil_impulse >= 500.0:
+			sound = &"shot_shotgun"
+			_shake(0.25)
+		Sfx.play(sound, muzzle, -6.0)
 	if fighter_id == local_fighter_id:
 		Haptics.pulse(15 if sound == &"shot_pistol" else 40, 0.3 if sound == &"shot_pistol" else 0.7)
 
@@ -368,6 +391,36 @@ func _on_teammate_thrown(thrower_id: int, fighter_id: int) -> void:
 	Sfx.play(&"slingshot", pos, -4.0, 1.2)
 
 
+func _on_consumable_used(fighter_id: int, def_id: StringName, position: Vector2) -> void:
+	var def := WeaponDef.load_by_id(def_id)
+	var color := def.glow_color if def != null else Color.WHITE
+	_burst(FLARE, position, Vector2.UP, color, 1, 0.0, 0.0, 0.35, true)
+	_burst(SPARK, position, Vector2.UP, color, 18, 380.0, 180.0, 0.05, true)
+	_pop_text(position + Vector2(0, -60), PICKUP_TEXT.get(def_id, "+"), color)
+	Sfx.play(&"pickup", position, -4.0, 1.2)
+	if fighter_id == local_fighter_id:
+		Haptics.pulse(25, 0.5)
+
+
+## A sniper shot's tracer, so everyone sees where it came from.
+func _tracer(from: Vector2, dir: Vector2, color: Color) -> void:
+	var to := from + dir * TRACER_LENGTH
+	if sim != null:
+		var hit := sim.weapons.cast(from, to)
+		if not hit.is_empty():
+			to = hit["position"]
+	var line := Line2D.new()
+	line.points = PackedVector2Array([from, to])
+	line.width = 5.0
+	line.default_color = Color(color, 0.9)
+	line.material = _additive
+	add_child(line)
+	var tween := line.create_tween().set_parallel()
+	tween.tween_property(line, "width", 1.0, TRACER_TIME)
+	tween.tween_property(line, "modulate:a", 0.0, TRACER_TIME)
+	tween.chain().tween_callback(line.queue_free)
+
+
 ## Expanding ring for combos, KOs and blasts.
 func _shockwave(pos: Vector2, size: float = 160.0) -> void:
 	var ring := Node2D.new()
@@ -386,14 +439,14 @@ func _shockwave(pos: Vector2, size: float = 160.0) -> void:
 
 
 ## The "SNAP!" pop for the signature combo (MEL-03).
-func _pop_text(pos: Vector2, text: String) -> void:
+func _pop_text(pos: Vector2, text: String, color: Color = COMBO_COLOR) -> void:
 	var label := Node2D.new()
 	label.position = pos
 	label.scale = Vector2(0.5, 0.5)
 	label.draw.connect(func() -> void:
 		var font := ThemeDB.fallback_font
 		label.draw_string_outline(font, Vector2(-150, 0), text, HORIZONTAL_ALIGNMENT_CENTER, 300, 64, 12, Color(0.2, 0.05, 0.0))
-		label.draw_string(font, Vector2(-150, 0), text, HORIZONTAL_ALIGNMENT_CENTER, 300, 64, COMBO_COLOR))
+		label.draw_string(font, Vector2(-150, 0), text, HORIZONTAL_ALIGNMENT_CENTER, 300, 64, color))
 	add_child(label)
 	var tween := label.create_tween()
 	tween.tween_property(label, "scale", Vector2(1.25, 1.25), 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)

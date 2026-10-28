@@ -85,6 +85,11 @@ func step(_tick: int) -> void:
 	pass
 
 
+## Velocity of the surface at world point (px/s). A fighter that lets go keeps it.
+func surface_velocity(_point: Vector2) -> Vector2:
+	return Vector2.ZERO
+
+
 ## Godot hands a moved node's transform to the physics server only once per frame. The sim moves
 ## bodies and then queries physics in the same tick, so moving objects push it right away.
 ## This only takes effect at once for static bodies: kinematic ones (AnimatableBody2D) apply a new

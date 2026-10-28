@@ -18,7 +18,8 @@ All packs below were downloaded from kenney.nl on 2026-10-26 and each pack's own
 
 Made for this project (no third-party license): `art/fx/hook.png` and `art/fx/rope_tile.png`, drawn by
 `tools/build_rope_art.gd`; the app icon (`tools/build_icon.gd`); the sword, boomerang, shield, Survival boss,
-hazards and weapon effects, drawn in code.
+hazards and weapon effects, the pickup icons and the knife, drawn in code; and the sniper shot, sniper bolt
+and knife swish sounds (`audio/sfx/{sniper_shot,sniper_bolt,knife_swish}.wav`), synthesized by `tools/build_sfx.py`.
 
 Notes:
 - The implementation plan names "Platformer Pack Redux" and "Space Shooter Redux". Kenney has since replaced

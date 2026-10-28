@@ -86,7 +86,7 @@ func fire(tick: int, target: Vector2) -> void:
 	hook_pos = origin
 	prev_hook_pos = origin
 	_traveled = 0.0
-	fighter.rope_cooldown_until_tick = tick + SimIds.ticks(TuningDB.t.rope_cooldown)
+	fighter.rope_cooldown_until_tick = tick + SimIds.ticks(TuningDB.t.rope_cooldown / fighter.speed_mult(tick))
 	fighter.emit_event(&"rope_fired", [fighter.fighter_id, target])
 
 
@@ -434,12 +434,14 @@ func _step_reel(tick: int) -> void:
 	if dist < 0.001:
 		return
 	var dir := to_anchor / dist
-	var v := fighter.velocity + dir * t.reel_accel * SimIds.DT
+	var haste := fighter.speed_mult(tick)
+	var max_speed := t.reel_max_speed * haste
+	var v := fighter.velocity + dir * t.reel_accel * haste * SimIds.DT
 	var along := v.dot(dir)
-	if along > t.reel_max_speed:
-		v -= dir * (along - t.reel_max_speed)
+	if along > max_speed:
+		v -= dir * (along - max_speed)
 	fighter.velocity = v
-	tension = clampf(v.dot(dir) / t.reel_max_speed, 0.0, 1.0)
+	tension = clampf(v.dot(dir) / max_speed, 0.0, 1.0)
 	if latched and tick - attach_tick >= SimIds.ticks(t.reel_max_time):
 		release()
 
@@ -476,7 +478,15 @@ func _step_pull(tick: int) -> void:
 	if along > t.pull_max_speed:
 		v -= dir * (along - t.pull_max_speed)
 	target.velocity = v
-	if not fighter.is_clinging():
+	if fighter.sim != null and not fighter.sim.are_enemies(fighter, target):
+		# 2v2: roping a teammate brings you together, so you reach them in half the time.
+		fighter.leave_surface()
+		var w := fighter.velocity - dir * t.pull_accel * SimIds.DT
+		var back := -w.dot(dir)
+		if back > t.pull_max_speed:
+			w += dir * (back - t.pull_max_speed)
+		fighter.velocity = w
+	elif not fighter.is_clinging():
 		fighter.velocity -= dir * t.pull_reaction * t.pull_accel * SimIds.DT
 	tension = clampf(v.dot(dir) / t.pull_max_speed, 0.0, 1.0)
 

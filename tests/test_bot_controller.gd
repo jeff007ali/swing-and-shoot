@@ -74,11 +74,19 @@ func _fires_near(fighter_id: int, point: Vector2, radius: float) -> Array:
 # --- Rule 4: rope the player ------------------------------------------------------------------
 
 func test_bot_ropes_the_player_in_range() -> void:
-	var bot := h.make_bot(enemy, _profile({"aggression": 100.0, "aim_error_deg": 0.0}))
+	var bot := h.make_bot(enemy, _profile({"aggression": 100.0, "aim_error_deg": 0.0, "acquire_time": 0.0}))
 	h.step(6)
 	assert_eq(_fires_near(enemy.fighter_id, PLAYER_POS, 1.0).size(), 1, "aims exactly at the still player")
 	assert_eq(bot.intent, &"rope_player")
 	assert_true(h.step_until(func() -> bool: return h.player.pulled_by_id == enemy.fighter_id, 15), "and pulls")
+
+
+func test_bot_needs_to_see_the_player_for_a_moment_first() -> void:
+	h.make_bot(enemy, _profile({"aggression": 100.0, "aim_error_deg": 0.0, "acquire_time": 0.5}))
+	h.step(SimIds.ticks(0.5) - 6)
+	assert_eq(_fires_near(enemy.fighter_id, PLAYER_POS, 1.0).size(), 0, "no snap rope before acquire_time")
+	h.step(12)
+	assert_eq(_fires_near(enemy.fighter_id, PLAYER_POS, 1.0).size(), 1, "ropes once the player has been in sight long enough")
 
 
 func test_bot_does_not_rope_a_player_out_of_sight() -> void:

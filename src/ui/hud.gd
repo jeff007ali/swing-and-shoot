@@ -1,14 +1,14 @@
 class_name Hud
 extends CanvasLayer
-## In-match controls (§4.4, §4.12). HIT and FIRE are aim sticks: a quick tap attacks at once with
+## In-match controls (§4.4, §4.12). KNIFE (melee) and FIRE are aim sticks: a quick tap attacks at once with
 ## auto-aim; pressing and dragging out of the dead zone shows an aim arrow from the fighter, and
 ## letting go attacks that way; dragging back into the middle cancels. The HUD tracks those
 ## touches itself (multi-touch, so a rope finger and an attack finger work together). Pause is a
 ## TouchScreenButton. Button rects go to the TouchRouter so a touch that starts on a button never
 ## fires a rope. With the rope stick setting (D39) a third stick sits in the other bottom corner:
 ## drag it to aim the rope (an enemy or weapon near that direction is aimed at), let go to fire;
-## a tap on it lets go of the rope. Each rope shows a short snap marker where aim assist sent it. Also shows own HP (top-left), the mode's scores and
-## clock (top-center, §6.5), a mode line (bomb, zone, Gun Game level), a minimap and off-screen
+## a tap on it lets go of the rope. Each rope shows a short snap marker where aim assist sent it. Also shows own HP (top-left),
+## with armor and active pickups under it, the mode's scores and clock (top-center, §6.5), a mode line (bomb, zone, Gun Game level), a minimap and off-screen
 ## arrows in big arenas (D28), and short messages.
 
 signal pause_pressed
@@ -288,7 +288,7 @@ func _set_down(button: StringName, down: bool) -> void:
 			_rope_visual.queue_redraw()
 
 
-## The aim arrow from the fighter while an attack button is dragged: the melee arc for HIT, a long
+## The aim arrow from the fighter while an attack button is dragged: the melee arc for KNIFE, a long
 ## line for FIRE.
 func _draw_aim() -> void:
 	if player == null or player.is_ko():
@@ -395,8 +395,13 @@ func _draw_status() -> void:
 	var frac := clampf(player.hp / TuningDB.t.max_hp, 0.0, 1.0)
 	_status.draw_rect(Rect2(origin, HP_BAR_SIZE), Color(0, 0, 0, 0.45))
 	_status.draw_rect(Rect2(origin, Vector2(HP_BAR_SIZE.x * frac, HP_BAR_SIZE.y)), _color(player).lerp(Color(1, 0.35, 0.3), 1.0 - frac))
+	if player.armor > 0.0:
+		var armor_frac := clampf(player.armor / TuningDB.t.max_armor, 0.0, 1.0)
+		_status.draw_rect(Rect2(origin + Vector2(0, HP_BAR_SIZE.y - 7), Vector2(HP_BAR_SIZE.x * armor_frac, 7)), FighterView.ARMOR_COLOR)
 	_status.draw_rect(Rect2(origin, HP_BAR_SIZE), Color(1, 1, 1, 0.6), false, 2.0)
-	_status.draw_string(font, origin + Vector2(10, HP_BAR_SIZE.y - 5), "%d" % ceili(player.hp), HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color.WHITE)
+	_status.draw_string(font, origin + Vector2(10, HP_BAR_SIZE.y - 5), "%d" % ceili(player.hp) + ("  +%d" % ceili(player.armor) if player.armor > 0.0 else ""), HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color.WHITE)
+	_draw_buffs(origin + Vector2(0, HP_BAR_SIZE.y + 24))
+
 
 	var center_x := safe.get_center().x
 	var y := safe.position.y + PAUSE_MARGIN + 44.0
@@ -469,6 +474,19 @@ func _draw_status() -> void:
 		_status.draw_string(font, Vector2(mid.x - 420, mid.y - 150), _message, HORIZONTAL_ALIGNMENT_CENTER, 840, 40, Color(1, 1, 1, alpha))
 
 
+## Seconds left on haste and power, under the HP bar.
+func _draw_buffs(at: Vector2) -> void:
+	var tick := player.sim.tick if player.sim != null else 0
+	var x := at.x
+	for buff: Array in [["HASTE", player.haste_until, FighterView.HASTE_COLOR], ["POWER", player.power_until, FighterView.POWER_COLOR]]:
+		var left := float(int(buff[1]) - tick) / SimIds.TICK_RATE
+		if left <= 0.0 or player.is_ko():
+			continue
+		var text := "%s %d" % [buff[0], ceili(left)]
+		_status.draw_string(UiTheme.FONT, Vector2(x, at.y), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 20, buff[2])
+		x += UiTheme.FONT.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 20).x + 24.0
+
+
 ## One line about the mode that matters to the local player right now.
 func _mode_line(tick: int) -> String:
 	if tracker != null:
@@ -480,7 +498,7 @@ func _mode_line(tick: int) -> String:
 	if mode is HotPotato:
 		var potato := mode as HotPotato
 		if potato.holder_id == player.fighter_id:
-			return "YOU HAVE THE BOMB! HOOK OR HIT SOMEONE  %.0f" % ceilf(potato.fuse_fraction(tick) * potato.fuse_length / SimIds.TICK_RATE)
+			return "YOU HAVE THE BOMB! HOOK OR KNIFE SOMEONE  %.0f" % ceilf(potato.fuse_fraction(tick) * potato.fuse_length / SimIds.TICK_RATE)
 	elif mode is KingOfTheSwing:
 		var koth := mode as KingOfTheSwing
 		if koth.holder == koth.key_of(player):
@@ -529,7 +547,23 @@ func _draw_melee(v: Node2D) -> void:
 	v.draw_circle(Vector2.ZERO, r, Color(1, 1, 1, 0.32 if _melee_down else 0.14))
 	v.draw_arc(Vector2.ZERO, r - 2.0, 0.0, TAU, 64, Color(1, 1, 1, 0.55), 4.0, true)
 	var font := UiTheme.FONT
-	v.draw_string(font, Vector2(-r, 12), "HIT", HORIZONTAL_ALIGNMENT_CENTER, r * 2.0, 36, Color(1, 1, 1, 0.8))
+	var item := _held_weapon()
+	var blade := item != null and item.def.kind == WeaponDef.Kind.BLADE
+	_draw_knife_icon(v, Vector2(0, -r * 0.3), r * 0.5)
+	v.draw_string(font, Vector2(-r, r * 0.42), item.def.display_name.to_upper() if blade else "KNIFE", HORIZONTAL_ALIGNMENT_CENTER, r * 2.0, 30, Color(1, 1, 1, 0.85))
+
+
+## A knife pointing up and to the right, about size across.
+func _draw_knife_icon(v: Node2D, at: Vector2, size: float) -> void:
+	var dir := Vector2(1, -1).normalized()
+	var side := dir.orthogonal()
+	var hand := at - dir * size * 0.55
+	var guard := hand + dir * size * 0.35
+	var tip := at + dir * size * 0.75
+	var c := Color(1, 1, 1, 0.85)
+	v.draw_line(hand, guard, c, size * 0.16, true)
+	v.draw_line(guard - side * size * 0.17, guard + side * size * 0.17, c, size * 0.08, true)
+	v.draw_colored_polygon(PackedVector2Array([guard - side * size * 0.12, tip, guard + side * size * 0.07]), c)
 
 
 func _draw_pause(v: Node2D) -> void:

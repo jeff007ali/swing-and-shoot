@@ -13,7 +13,8 @@ Hook an enemy, yank them in and punch them as they fly past: SNAP!
 - One-thumb rope controls built for phones: tap to rope, swipe to kick off, one button to hit
 - 7 arenas with hazards: airlock vents, fuel tanks, electric walls, drifting asteroids and a growing black hole
 - Mid-match chaos: Lights Out, Vent Surge, Closing Walls, Debris Storm
-- 17 weapons: rocket launcher, bouncing laser, freeze ray, black hole bomb, boomerang blade, harpoon, shield...
+- 19 weapons: sniper, rocket launcher, bouncing laser, freeze ray, black hole bomb, proximity mines, boomerang blade, harpoon, shield...
+- Pickups: med kits, armor, haste and power
 - Modes: Duel, Free-for-all, 2v2, King of the Swing, Hot Potato, Gun Game and Co-op Survival with a giant boss
 - LAN Party: up to 4 phones on the same Wi-Fi or hotspot, no internet needed, bots fill empty slots
 - Bots in three difficulties, a tutorial, left-handed layout, button size and colorblind-safe colors

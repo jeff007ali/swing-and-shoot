@@ -2,7 +2,7 @@
 
 **Source of truth for features:** [requirements.md](requirements.md). This document says **how** we build it.
 **Status:** Approved decisions as of 2026-10-26. Anything not listed in §1 or in a "Decision" note is an open change request, not an open question.
-**Build status (2026-10-26):** Phases 1–7 are built and covered by GUT tests (192 tests). Phase 1 milestones M0–M6, LAN multiplayer (Phase 2), weapons (3), hazards, 7 arenas and mid-match events (4), game modes (5), the full arsenal, advanced rope and Co-op Survival (6), and polish and store prep (7). Still open, because they need people and devices: the M7 playtest, the §6.2 four-phone LAN session, the 60 fps check on the reference Android and iPhone, iOS builds (Xcode and the Apple Team ID) and store accounts. Decisions D15–D40 record where the build differs from the original plan; the sections below are updated to match.
+**Build status (2026-10-26):** Phases 1–7 are built and covered by GUT tests (192 tests). Phase 1 milestones M0–M6, LAN multiplayer (Phase 2), weapons (3), hazards, 7 arenas and mid-match events (4), game modes (5), the full arsenal, advanced rope and Co-op Survival (6), and polish and store prep (7). Still open, because they need people and devices: the M7 playtest, the §6.2 four-phone LAN session, the 60 fps check on the reference Android and iPhone, iOS builds (Xcode and the Apple Team ID) and store accounts. Decisions D15–D46 record where the build differs from the original plan; the sections below are updated to match.
 
 **How this doc is organized**
 
@@ -59,11 +59,17 @@ All distances are in **world pixels** at the 1920×1080 reference arena. All tim
 | D33 | Phase 5 details | `GameMode` lives **in the sim** (its state is in every snapshot); only the authoritative sim scores and ends a match. 2v2 teams alternate by slot; no friendly fire; a teammate's pull earns no kill credit. King of the Swing: a figure-eight path (a loop around the middle on the black hole map), points only when one side holds the zone alone, scored in ticks, shown in seconds, target 20 s. Hot Potato: survivors score a point per blast; a new bomb 3 s later. Gun Game: loose weapons vanish; the mode hands out each level's weapon. Results are saved locally as `MatchResult` records. Bots get a **mode goal** (the zone, away from the bomb, the boss's weak points) and aim free rope spots toward it; a grapple that ends where it started blocks that anchor for 5 s. | Measured: bots reach and hold the zone on every arena. |
 | D34 | Phase 6 details | All special weapons live in `SpecialWeapons`. Harpoon: a separate tether that hauls the victim in, not a second `Rope` node. Magnet: "metal-armored" means holding any weapon. Shield: an enemy hook from the front rips it off and fetches it. Sticky grenades stick to fighters, to a rope's owner or to walls. Freeze: 3 s, can always be roped, a fast frozen fighter hits whoever it touches (credited to whoever roped it). Legendary: the black hole bomb, in an open spot beside a vent, tank or black hole, or mid-arena. A caught projectile is whipped back automatically at the nearest enemy. Tug-of-war lasts 1.2 s, any tap counts, a tie releases both. Co-op Survival: enemy fighters exist from the start and sit benched between waves (fixed slots keep LAN simple); wave n brings n + 1; a boss every 5th wave is a round arena object you rope onto, hurt only at three rotating weak points; shared lives; 10 waves win. | |
 | D35 | Phase 7 details | The tutorial is a list of `ChallengeDef` resources (event, conditions, count) counted by a `ChallengeTracker`: the same data the future daily challenges use (two examples ship). Accessibility: left-handed buttons, button size 0.7–1.5×, Okabe-Ito colors for players and teams. Performance pass (`tools/benchmark.gd`): 4 hard bots with hazards, events and fast weapon spawns cost 0.25 ms per tick on a desktop with a window (≈1.2 ms headless); the starfield became one mesh (≈1,040 → 110 draw calls per frame), particle bursts use a pool, and each sound variation has its own player (swapping streams cost ~1 ms per sound). `Store` autoload stub; the profile's loadout travels in the LAN handshake. | Measuring on the reference phones is still to do. |
-| D36 | LAN protocol version | `NetProtocol.VERSION` is 5 (adds weapons, hazards, mode state, special-weapon state, thruster steering and the loadout). | Older builds are told to update. |
+| D36 | LAN protocol version | `NetProtocol.VERSION` is 6 since D41–D46 (5 added weapons, hazards, mode state, special-weapon state, thruster steering and the loadout). | Older builds are told to update. |
 | D37 | Aimed attacks | HIT and FIRE work as **aim sticks**: a quick tap attacks at once with auto-aim (§4.8, CTL-05); press and drag past a 36 px dead zone shows an aim arrow from the fighter (the melee arc for HIT, a line for FIRE) and letting go attacks that way; dragging back into the middle cancels. The aim goes in `InputCommand.aim_dir`, which melee, blades and the shield bash now use too. On desktop, Space/J and K aim at the mouse cursor. | Requested after playtesting on the laptop: players need to choose the direction. |
 | D38 | Rope aim assist and leaving walls | Aim assist (§4.5) now also snaps to **floating weapons** near the tap (1.5× the radius, at their lead position), and a tap on a **turbine** aims at its hub, so the hook hits the hub or an arm on the way instead of a gap the arm has turned out of. A rope fired from a wall that finds nothing (out of range, empty space) **kicks the fighter off toward where it was aimed**, so a far tap never leaves you stuck. | Found on the laptop: on the big arenas many taps are beyond the 640 px rope range. |
 | D39 | Rope stick (optional) and rope feedback | Tapping anywhere stays the rope control (CTL-02). Settings adds an optional **rope stick** in the other bottom corner: drag to aim (an enemy or floating weapon within 12° of the direction is aimed at, else a full rope length that way), let go to fire, tap it to let go of the rope. Every rope shows a short **snap marker** where aim assist sent it, with a line from the finger when it moved, and a tap beyond rope range **flashes the range circle**. | So players can compare tap and stick on real phones; the playtest decides the default. |
 | D40 | Menu and LAN lobby redesign | The home screen has one big **PLAY**, then Tutorial, Free Fly and LAN Party, with Settings in the corner. PLAY opens a **match setup** page: mode tiles (with who plays), the arena with a thumbnail and arrows, and the bot level, then START. LAN hosting uses the same picker, so the host now picks the **arena** too, next to the join code and four player slots. Join lists games with host, mode, arena and players, and gives up on a silent host after 8 s. Buttons are flat dark tiles, with one filled green button per screen. | The old menu put every option on one screen, and LAN hosts couldn't pick an arena. |
+| D41 | Leaving a turbine | A fighter that lets go of a **moving surface** (kick, cling timeout, rope, recoil) keeps the surface's speed, and for `MOVING_RELEASE_GRACE` (0.75 s) touching that same object **pushes it off** (at least `KICK_MIN_NORMAL_DOT × KICK_SPEED` away from the surface) instead of clinging again; each push restarts the grace. | Playtest: you sometimes couldn't get off a turbine. The arm turns before the fighter moves each tick, so it swept into the fighter and re-clung it, over and over on its leading face. |
+| D42 | Movement pass | Faster and longer reach: `HOOK_SPEED` 3600 → 4400, `ROPE_RANGE` 640 → 720, `ROPE_COOLDOWN` 0.35 → 0.25, `REEL_ACCEL` 4200 → 5400, `REEL_MAX_SPEED` 1400 → 1650, `KICK_SPEED` 750 → 950, `MAX_SPEED` 1800 → 2000. In 2v2, roping a **teammate** pulls both of you together, so you reach them in about half the time. | Playtest: too slow to reach an opponent, help a teammate or counterattack. |
+| D43 | Bots play fair | Bot sight is blocked by **every** wall (smooth panels used to be see-through for bots). A bot must keep the player in sight for `acquire_time` (Easy 0.7 s, Normal 0.45, Hard 0.25) before it shoots or ropes them, and leads moving targets by `lead_skill` (0.3 / 0.6 / 0.85) instead of perfectly. Aim error and Hard's fire rate were raised and lowered a little. | Playtest: bots hit players they couldn't see, with perfect accuracy. |
+| D44 | New weapons and the repulsor | **Sniper** (gun): 4 shots, 6000 px/s, 30 damage, 1.4 s between shots. It can't hide: a loud bolt sound and a "HAS THE SNIPER" message when picked up, a red **laser sight** everyone sees, a booming shot and a tracer. **Proximity mine**: thrown, sticks, arms after 0.9 s, explodes (38 damage) when an enemy comes within 120 px; the owner and teammates can't set it off. The **repulsor** is now a 110° cone ahead (plus anything right next to you), 520 px, strong enough to disarm, and kicks the user backward; it still breaks pulls and turns shots around. | Playtest: the repulsor was useless (a weak push in every direction); mines and a sniper were asked for. |
+| D45 | Pickups | Four **consumables** spawn and float like weapons (WeaponDef kind CONSUMABLE) and are used the moment you rope them or fly through them, without dropping your weapon: **Med Kit** +40 HP, **Armor** soaks the next 35 damage (60 max), **Haste** ×1.3 reel, kick, top speed and rope cooldown for 6 s, **Power** ×1.5 damage for 8 s. Modes that narrow the weapons still spawn pickups. Bots rope a pickup when it would help. | Playtest request. |
+| D46 | KNIFE button | The melee button is labeled **KNIFE** (or the blade's name while holding one) with a knife icon, and the swing draws a knife: pulled back during the wind-up, swept across the arc with a smear, then held while it fades; the body lunges with the active frames. New sounds (sniper shot and bolt, knife swish) are made by `tools/build_sfx.py`. | Playtest: "HIT" didn't say what it does, and the swing had no animation. |
 
 ---
 
@@ -523,12 +529,12 @@ All values are editable live in the debug overlay. Playtesting will change them;
 |-----|-------|------|-------------|
 | `FIGHTER_RADIUS` | 28 | px | |
 | `DRAG` | 0.25 | 1/s (exponential) | PHY-02 |
-| `MAX_SPEED` | 1800 | px/s | |
-| `HOOK_SPEED` | 3600 | px/s | |
-| `ROPE_RANGE` | 640 | px | ROPE-10 |
-| `ROPE_COOLDOWN` | 0.35 | s from fire | ROPE-11 |
-| `REEL_ACCEL` | 4200 | px/s² | ROPE-01 |
-| `REEL_MAX_SPEED` | 1400 | px/s | |
+| `MAX_SPEED` | 2000 (D42) | px/s | |
+| `HOOK_SPEED` | 4400 (D42) | px/s | |
+| `ROPE_RANGE` | 720 (D42) | px | ROPE-10 |
+| `ROPE_COOLDOWN` | 0.25 (D42) | s from fire | ROPE-11 |
+| `REEL_ACCEL` | 5400 (D42) | px/s² | ROPE-01 |
+| `REEL_MAX_SPEED` | 1650 (D42) | px/s | |
 | `REEL_MAX_TIME` | 2.0 | s | |
 | `ORBIT_MIN_TANGENT_SPEED` | 260 | px/s | ROPE-04 |
 | `ORBIT_MIN_ANGLE` | 55 | degrees | ROPE-04 |
@@ -547,10 +553,11 @@ All values are editable live in the debug overlay. Playtesting will change them;
 | `PULL_IMMUNITY` | 1.0 | s | CNT-03 |
 | `CLING_TIME` | 1.2 | s | PHY-03 |
 | `CLING_DRIFT_SPEED` | 60 | px/s | PHY-03 |
-| `KICK_SPEED` | 750 | px/s | PHY-03 |
+| `KICK_SPEED` | 950 (D42) | px/s | PHY-03 |
 | `KICK_WINDOW` | 0.12 | s | |
 | `SWIPE_MIN_DIST` | 30 | px (reference) | |
 | `KICK_MIN_NORMAL_DOT` | 0.2 | | |
+| `MOVING_RELEASE_GRACE` | 0.75 | s | D41 |
 | `HOLD_THRESHOLD` | 0.20 | s | CTL-03 |
 | `AIM_ASSIST_RADIUS` | 64 | px | CTL-06 |
 | `MELEE_RANGE` | 95 | px center to center | |

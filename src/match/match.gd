@@ -196,6 +196,15 @@ func _setup_common() -> void:
 	GameEvents.legendary_incoming.connect(func(def_id: StringName, _at: Vector2, seconds: float) -> void:
 		var def := WeaponDef.load_by_id(def_id)
 		hud.show_message("LEGENDARY %s IN %d!" % [def.display_name.to_upper() if def != null else "WEAPON", ceili(seconds)], 2.5))
+	GameEvents.weapon_picked.connect(func(fighter_id: int, _weapon_id: int, def_id: StringName) -> void:
+		# The sniper is announced to everyone (with its own loud sound, ImpactFx).
+		if def_id != &"sniper":
+			return
+		var holder := sim.get_fighter(fighter_id)
+		if holder == player:
+			hud.show_message("YOU HAVE THE SNIPER", 2.0)
+		elif holder != null:
+			hud.show_message("%s HAS THE SNIPER!" % (holder.display_name.to_upper() if not holder.display_name.is_empty() else "SOMEONE"), 2.5))
 
 	if not mode_def.challenges.is_empty() and net == null:
 		_start_tutorial()

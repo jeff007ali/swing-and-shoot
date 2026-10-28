@@ -5,7 +5,9 @@ extends Resource
 
 const DIR: String = "res://data/weapons/"
 
-enum Kind { GUN, BLADE, SPECIAL }
+## CONSUMABLE: a pickup used the moment it is grabbed (rope or touch), never held. Its
+## projectile_kind is health, armor, haste or power; effect_strength the amount, effect_time the time.
+enum Kind { GUN, BLADE, SPECIAL, CONSUMABLE }
 
 @export var id: StringName = &""
 @export var display_name: String = ""
@@ -33,7 +35,8 @@ enum Kind { GUN, BLADE, SPECIAL }
 @export var projectile_radius: float = 6.0
 @export var projectile_color: Color = Color(1, 0.9, 0.4)
 ## Phase 6 behavior (SPECIAL weapons, §6.6): rocket, laser, boomerang, harpoon, freeze, magnet,
-## sticky, gravity, black_hole_bomb, repulsor, tether_mine, tether_rope, shield, thruster.
+## sticky, gravity, black_hole_bomb, repulsor, tether_mine, prox_mine, tether_rope, shield, thruster.
+## CONSUMABLE pickups: health, armor, haste, power.
 @export var projectile_kind: StringName = &""
 
 @export_group("Special")
