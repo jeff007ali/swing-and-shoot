@@ -31,6 +31,10 @@ const PROFILE_DIR: String = "res://data/bots/"
 @export var acquire_time: float = 0.4
 ## Share of the target's motion the bot leads its shots and ropes by (1 = perfect lead).
 @export var lead_skill: float = 0.6
+## Chance per perception to air-dash sideways out of the way of an incoming shot or hook.
+@export var dodge_chance: float = 0.15
+## Chance per perception to air-dash at a nearby player to close in for the knife.
+@export var chase_dash_chance: float = 0.25
 
 @export_group("Behavior")
 ## Perception runs every this many ticks (0.1 s).

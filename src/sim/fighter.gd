@@ -56,6 +56,9 @@ var hit_spin_dir: float = 1.0
 var frozen_until: int = SimIds.NO_TICK
 ## Pickups (consumables): armor soaks damage before HP; haste and power last until their tick.
 var armor: float = 0.0
+## Air dash charges left, and when the next one comes back (NO_TICK: all full).
+var dash_charges: int = 0
+var dash_recharge_tick: int = SimIds.NO_TICK
 var haste_until: int = SimIds.NO_TICK
 var power_until: int = SimIds.NO_TICK
 
@@ -80,6 +83,7 @@ func _ready() -> void:
 	circle.radius = TuningDB.t.fighter_radius
 	_shape.shape = circle
 	hp = TuningDB.t.max_hp
+	dash_charges = TuningDB.t.dash_charges
 	rope.fighter = self
 	prev_position = global_position
 
@@ -110,6 +114,9 @@ func step_timers(tick: int) -> void:
 		return
 	if state == SimIds.FighterState.HITSTUN and tick >= hitstun_until_tick:
 		state = _idle_state()
+	if dash_recharge_tick != SimIds.NO_TICK and tick >= dash_recharge_tick:
+		dash_charges += 1
+		dash_recharge_tick = tick + SimIds.ticks(TuningDB.t.dash_recharge) if dash_charges < TuningDB.t.dash_charges else SimIds.NO_TICK
 	if state == SimIds.FighterState.CLINGING:
 		cling_ticks_left -= 1
 		if cling_ticks_left <= 0:
@@ -143,6 +150,8 @@ func respawn_at(pos: Vector2, tick: int) -> void:
 	teleport(pos)
 	hp = TuningDB.t.max_hp
 	armor = 0.0
+	dash_charges = TuningDB.t.dash_charges
+	dash_recharge_tick = SimIds.NO_TICK
 	haste_until = SimIds.NO_TICK
 	power_until = SimIds.NO_TICK
 	invulnerable_until_tick = tick + SimIds.ticks(TuningDB.t.spawn_invuln)
@@ -402,6 +411,8 @@ func get_state() -> Dictionary:
 		"fire_ready": fire_ready_tick,
 		"frozen": frozen_until,
 		"armor": armor,
+		"dash": dash_charges,
+		"dash_at": dash_recharge_tick,
 		"haste": haste_until,
 		"power": power_until,
 		"released_obj": _released_object.object_id if _released_object != null else -1,
@@ -440,6 +451,8 @@ func set_state(s: Dictionary) -> void:
 	fire_ready_tick = s["fire_ready"]
 	frozen_until = s.get("frozen", SimIds.NO_TICK)
 	armor = s.get("armor", 0.0)
+	dash_charges = s.get("dash", TuningDB.t.dash_charges)
+	dash_recharge_tick = s.get("dash_at", SimIds.NO_TICK)
 	haste_until = s.get("haste", SimIds.NO_TICK)
 	power_until = s.get("power", SimIds.NO_TICK)
 	_released_object = sim.get_object(s.get("released_obj", -1)) if sim != null else null
@@ -488,14 +501,43 @@ func _apply_command(tick: int, cmd: InputCommand) -> void:
 		if rope.is_out():
 			rope.release()
 		rope.fire(tick, cmd.rope_target)
-	if cmd.kick and state == SimIds.FighterState.CLINGING:
-		_kick(cmd.kick_dir)
+	if cmd.kick:
+		if state == SimIds.FighterState.CLINGING:
+			_kick(cmd.kick_dir)
+		else:
+			dash(tick, cmd.kick_dir)
 	if cmd.melee and can_melee(tick):
 		start_melee(tick, cmd.aim_dir)
 	if cmd.fire and _can_act() and sim != null:
 		sim.weapons.fire(self, cmd, tick)
 	if rope.is_out() and not cmd.rope_held:
 		rope.latched = true
+
+
+## Air dash (a swipe away from walls): turn toward dir at DASH_SPEED, or DASH_KEEP of the current
+## speed if that is more. Uses a charge. A rope on a surface or a hook still flying lets go; pulling
+## an enemy or fetching a weapon goes on.
+func can_dash(tick: int) -> bool:
+	return dash_charges > 0 and _can_act() and not is_frozen(tick) and state != SimIds.FighterState.CLINGING
+
+
+func dash(tick: int, dir: Vector2) -> void:
+	if dir.length_squared() < 0.0001 or not can_dash(tick):
+		return
+	var t := TuningDB.t
+	match rope.mode:
+		SimIds.RopeMode.PULL, SimIds.RopeMode.FETCH, SimIds.RopeMode.CATCH:
+			pass
+		_:
+			if rope.is_out():
+				rope.release(false)
+	var d := dir.normalized()
+	velocity = d * maxf(t.dash_speed * speed_mult(tick), velocity.length() * t.dash_keep)
+	facing = d
+	if dash_charges == t.dash_charges:
+		dash_recharge_tick = tick + SimIds.ticks(t.dash_recharge)
+	dash_charges -= 1
+	emit_event(&"dashed", [fighter_id, d])
 
 
 ## Kick off the surface toward dir (a missed rope from a wall, D38). Does nothing unless clinging.
@@ -606,7 +648,8 @@ func _move() -> void:
 		&"electric":
 			_shock(collision)
 		_:
-			_cling(collision, obj)
+			if not _glance(collision, obj):
+				_cling(collision, obj)
 
 
 ## Touching a moving surface just let go of: keep at least KICK_MIN_NORMAL_DOT x KICK_SPEED away
@@ -619,6 +662,27 @@ func _push_off(collision: KinematicCollision2D, obj: ArenaObject) -> void:
 	rel += n * maxf(0.0, t.kick_speed * t.kick_min_normal_dot - rel.dot(n))
 	velocity = rel + carry
 	_released_until = sim.tick + SimIds.ticks(t.moving_release_grace) if sim != null else _released_until
+
+
+## A fast, shallow hit on a still surface slides along it and keeps most of the speed instead of
+## clinging; the steeper the hit, the more speed it costs. True when it glanced.
+func _glance(collision: KinematicCollision2D, obj: ArenaObject) -> bool:
+	var t := TuningDB.t
+	var speed := velocity.length()
+	if obj.is_moving or speed < t.glance_min_speed:
+		return false
+	var n := collision.get_normal()
+	var steep := absf(velocity.dot(n)) / speed
+	var limit := sin(deg_to_rad(t.glance_max_angle))
+	if steep > limit:
+		return false
+	velocity = velocity.slide(n) * lerpf(1.0, t.glance_keep, steep / maxf(limit, 0.001))
+	if rope.is_attached() and rope.anchor_object == obj and rope.mode in [SimIds.RopeMode.REEL, SimIds.RopeMode.ORBIT]:
+		# Skimming the wall the rope hangs on: the rope would only drag the fighter into it.
+		rope.release(false)
+	if steep > 0.05:
+		emit_event(&"glanced", [fighter_id, collision.get_position(), n])
+	return true
 
 
 ## ARN-05: bounce off hard and take damage (at most every ELECTRIC_COOLDOWN).

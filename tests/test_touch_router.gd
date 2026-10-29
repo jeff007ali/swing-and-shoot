@@ -157,6 +157,33 @@ func test_hold_while_clinging_fires_when_kick_window_ends() -> void:
 	assert_eq(fired_on, window + 1, "fires on the tick the window ends")
 
 
+func test_swipe_away_from_walls_dashes_instead_of_roping() -> void:
+	router.touch_down(0, P)
+	router.touch_move(0, P + Vector2(0, -TuningDB.t.dash_swipe_dist - 5.0))
+	var cmd := _step()
+	assert_true(cmd.kick, "a dash (a kick command away from walls)")
+	assert_almost_eq(cmd.kick_dir, Vector2.UP, Vector2(0.001, 0.001))
+	assert_false(cmd.rope_fire, "the rope the touch fired is called back")
+	router.touch_up(0, P)
+	assert_false(_step().rope_release, "lifting after a dash does nothing")
+
+
+func test_swipe_after_the_rope_went_out_dashes_and_lets_go() -> void:
+	router.touch_down(0, P)
+	assert_true(_step().rope_fire)
+	router.touch_move(0, P + Vector2(TuningDB.t.dash_swipe_dist + 5.0, 0))
+	var cmd := _step()
+	assert_true(cmd.kick)
+	assert_true(cmd.rope_release, "the rope already out lets go")
+
+
+func test_slow_drag_away_from_walls_is_not_a_dash() -> void:
+	router.touch_down(0, P)
+	_steps(SimIds.ticks(TuningDB.t.kick_window) + 2)
+	router.touch_move(0, P + Vector2(200, 0))
+	assert_false(_step().kick, "too late for a swipe")
+
+
 func test_touch_starting_on_a_button_is_ignored() -> void:
 	var rects: Array[Rect2] = [Rect2(1700, 860, 200, 200)]
 	router.button_rects = rects

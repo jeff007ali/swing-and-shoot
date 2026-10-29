@@ -74,7 +74,7 @@ func _fires_near(fighter_id: int, point: Vector2, radius: float) -> Array:
 # --- Rule 4: rope the player ------------------------------------------------------------------
 
 func test_bot_ropes_the_player_in_range() -> void:
-	var bot := h.make_bot(enemy, _profile({"aggression": 100.0, "aim_error_deg": 0.0, "acquire_time": 0.0}))
+	var bot := h.make_bot(enemy, _profile({"aggression": 100.0, "aim_error_deg": 0.0, "acquire_time": 0.0, "chase_dash_chance": 0.0}))
 	h.step(6)
 	assert_eq(_fires_near(enemy.fighter_id, PLAYER_POS, 1.0).size(), 1, "aims exactly at the still player")
 	assert_eq(bot.intent, &"rope_player")
@@ -82,11 +82,24 @@ func test_bot_ropes_the_player_in_range() -> void:
 
 
 func test_bot_needs_to_see_the_player_for_a_moment_first() -> void:
-	h.make_bot(enemy, _profile({"aggression": 100.0, "aim_error_deg": 0.0, "acquire_time": 0.5}))
+	h.make_bot(enemy, _profile({"aggression": 100.0, "aim_error_deg": 0.0, "acquire_time": 0.5, "chase_dash_chance": 0.0}))
 	h.step(SimIds.ticks(0.5) - 6)
 	assert_eq(_fires_near(enemy.fighter_id, PLAYER_POS, 1.0).size(), 0, "no snap rope before acquire_time")
 	h.step(12)
 	assert_eq(_fires_near(enemy.fighter_id, PLAYER_POS, 1.0).size(), 1, "ropes once the player has been in sight long enough")
+
+
+func test_bot_dashes_sideways_out_of_a_shots_path() -> void:
+	var bot := h.make_bot(enemy, _profile({"dodge_chance": 1.0, "aggression": 0.0, "chase_dash_chance": 0.0}))
+	var gun := h.sim.weapons.spawn(WeaponDef.load_by_id(&"pistol"), h.player.global_position)
+	h.sim.weapons.equip(h.player, gun)
+	var cmd := InputCommand.new()
+	cmd.fire = true
+	cmd.aim_dir = Vector2.RIGHT
+	h.sim.weapons.fire(h.player, cmd, h.sim.tick)
+	assert_true(h.step_until(func() -> bool: return bot.intent == &"dodge", 12), "sees the shot coming and dodges")
+	assert_gt(absf(enemy.velocity.y), absf(enemy.velocity.x) * 2.0, "sideways, across the shot")
+	assert_eq(enemy.hp, TuningDB.t.max_hp, "and it misses")
 
 
 func test_bot_does_not_rope_a_player_out_of_sight() -> void:
@@ -157,6 +170,8 @@ func test_bot_times_a_pull_and_punch_combo() -> void:
 
 func test_clinging_bot_grapples_to_an_anchor_after_its_idle_time() -> void:
 	var bot := h.make_bot(enemy, _profile({"aggression": 0.0}))
+	# Out of rope range (so the bot doesn't hold position) but not far enough to hunt.
+	h.player.teleport(Vector2(1100, 930))
 	enemy.teleport(Vector2(1830, 700))
 	enemy.velocity = Vector2(900, 0)
 	assert_true(h.step_until(enemy.is_clinging, 10), "bot reaches the right wall")
@@ -183,7 +198,7 @@ func test_clinging_bot_holds_position_while_the_player_is_ropeable() -> void:
 
 func test_roaming_skips_anchors_on_the_surface_it_clings_to() -> void:
 	var bot := h.make_bot(enemy, _profile({"aggression": 0.0}))
-	h.player.teleport(Vector2(1770, 930))
+	h.player.teleport(Vector2(1200, 700))
 	enemy.teleport(Vector2(590, 200))
 	enemy.velocity = Vector2(0, 900)
 	assert_true(h.step_until(enemy.is_clinging, 10), "lands on top of Box A")
@@ -235,6 +250,19 @@ func _kos_in_bot_match(hard_first: bool, match_seed: int) -> Vector2i:
 	var by := func(killer: Fighter) -> int:
 		return events.filter(func(e: Array) -> bool: return e[0] == &"ko" and e[2] == killer.fighter_id).size()
 	return Vector2i(by.call(hard), by.call(easy))
+
+
+func test_bots_find_each_other_on_a_big_arena() -> void:
+	# Opposite corners of the Station (3840 x 2160): far beyond rope range, with boxes in between.
+	h.destroy()
+	h = MatchHarness.new()
+	h.create(self, 77, &"station")
+	await wait_physics_frames(2)
+	enemy = h.add_enemy(h.sim.spawn_points[h.sim.spawn_points.size() - 1])
+	h.make_bot(h.player, &"hard")
+	h.make_bot(enemy, &"hard")
+	assert_gt(h.player.global_position.distance_to(enemy.global_position), 2000.0, "starts far apart")
+	assert_true(h.step_until(func() -> bool: return h.player.pulled_by_id >= 0 or enemy.pulled_by_id >= 0, 1200), "one ropes the other within 20 s")
 
 
 func test_hard_beats_easy_over_several_matches() -> void:

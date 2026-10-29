@@ -14,6 +14,8 @@ signal rope_bounced(fighter_id: int, point: Vector2)
 signal rope_released(fighter_id: int, fling_mode: int)
 signal clung(fighter_id: int, point: Vector2, normal: Vector2)
 signal kicked_off(fighter_id: int, direction: Vector2)
+signal dashed(fighter_id: int, direction: Vector2)
+signal glanced(fighter_id: int, point: Vector2, normal: Vector2)
 signal melee_started(fighter_id: int, direction: Vector2)
 signal hit_landed(attacker_id: int, victim_id: int, damage: float, knockback: float, is_combo: bool)
 ## cause and last_puller_id let future challenges ask "pulled into a hazard" (§7).

@@ -18,5 +18,6 @@ Open the link on your Android phone and allow *Install unknown apps* for your br
 - Debug APK: `godot --headless --path . --export-debug "Android" export/android/swing-and-shoot.apk`
 - Releases: push a `v*` tag; see [docs/release.md](docs/release.md)
 
+How to play (controls, combos, weapons, modes): [docs/how-to-play.md](docs/how-to-play.md).
 Design and decisions: [docs/implementation.md](docs/implementation.md). Requirements:
 [docs/requirements.md](docs/requirements.md). Asset credits: [assets/CREDITS.md](assets/CREDITS.md).

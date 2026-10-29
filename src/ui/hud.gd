@@ -8,7 +8,8 @@ extends CanvasLayer
 ## fires a rope. With the rope stick setting (D39) a third stick sits in the other bottom corner:
 ## drag it to aim the rope (an enemy or weapon near that direction is aimed at), let go to fire;
 ## a tap on it lets go of the rope. Each rope shows a short snap marker where aim assist sent it. Also shows own HP (top-left),
-## with armor and active pickups under it, the mode's scores and clock (top-center, §6.5), a mode line (bomb, zone, Gun Game level), a minimap and off-screen
+## with armor, chip damage and active pickups under it, a red screen edge when you are hit (and a
+## heartbeat glow at low HP), the mode's scores and clock (top-center, §6.5), a mode line (bomb, zone, Gun Game level), a minimap and off-screen
 ## arrows in big arenas (D28), and short messages.
 
 signal pause_pressed
@@ -18,6 +19,13 @@ const FIRE_DIAMETER: float = 150.0
 const FIRE_GAP: float = 24.0
 const PAUSE_SIZE: float = 90.0
 const EDGE_MARGIN: float = 40.0
+## Red screen edge when the local player is hit: fades over this long; a slow pulse below this share
+## of max HP.
+const HURT_EDGE_TIME: float = 0.45
+const HURT_EDGE_WIDTH: float = 110.0
+const HURT_EDGE_COLOR: Color = Color(1.0, 0.1, 0.05, 0.55)
+const LOW_HP_SHARE: float = 0.25
+const LOW_HP_GLOW: float = 0.45
 const PAUSE_MARGIN: float = 24.0
 const HP_BAR_SIZE: Vector2 = Vector2(360, 24)
 const SCORE_FONT_SIZE: int = 44
@@ -65,6 +73,11 @@ var _minimap: Minimap
 var _markers: OffscreenMarkers
 var _message: String = ""
 var _message_time: float = 0.0
+## The local player's last HP, the lagging chip-damage HP and its hold, and the hurt edge (1 = just hit).
+var _seen_hp: float = -1.0
+var _chip_hp: float = 0.0
+var _chip_hold: float = 0.0
+var _hurt: float = 0.0
 ## touch index -> {button: &"melee" | &"fire", dir: Vector2, out: bool}
 var _aims: Dictionary = {}
 
@@ -134,6 +147,7 @@ func show_message(text: String, seconds: float = MESSAGE_TIME) -> void:
 func _process(delta: float) -> void:
 	_message_time = maxf(0.0, _message_time - delta)
 	_snap_time = maxf(0.0, _snap_time - delta)
+	_watch_player_hp(delta)
 	if not _aims.is_empty():
 		_rope_visual.queue_redraw()
 	_status.queue_redraw()
@@ -144,6 +158,42 @@ func _process(delta: float) -> void:
 		_layout()
 	if armed:
 		_fire_visual.queue_redraw()
+
+
+## Chip damage on the HP bar and the red edge, from the local player's HP going down.
+func _watch_player_hp(delta: float) -> void:
+	_hurt = maxf(0.0, _hurt - delta / HURT_EDGE_TIME)
+	if player == null:
+		return
+	if _seen_hp < 0.0 or player.hp > _seen_hp:
+		_chip_hp = player.hp
+	elif player.hp < _seen_hp - 0.5:
+		_hurt = 1.0
+		_chip_hold = FighterView.CHIP_HOLD
+	if _chip_hold > 0.0:
+		_chip_hold -= delta
+	else:
+		_chip_hp = move_toward(_chip_hp, player.hp, TuningDB.t.max_hp * FighterView.CHIP_RATE * delta)
+	_seen_hp = player.hp
+
+
+## A red glow along the screen edges: strength 0..1.
+func _draw_edge_glow(rect: Rect2, strength: float) -> void:
+	if strength <= 0.01:
+		return
+	var w := HURT_EDGE_WIDTH
+	var solid := Color(HURT_EDGE_COLOR, HURT_EDGE_COLOR.a * strength)
+	var clear := Color(HURT_EDGE_COLOR, 0.0)
+	var a := rect.position
+	var b := rect.end
+	var bands := [
+		[Vector2(a.x, a.y), Vector2(b.x, a.y), Vector2(b.x - w, a.y + w), Vector2(a.x + w, a.y + w)],
+		[Vector2(b.x, a.y), Vector2(b.x, b.y), Vector2(b.x - w, b.y - w), Vector2(b.x - w, a.y + w)],
+		[Vector2(b.x, b.y), Vector2(a.x, b.y), Vector2(a.x + w, b.y - w), Vector2(b.x - w, b.y - w)],
+		[Vector2(a.x, b.y), Vector2(a.x, a.y), Vector2(a.x + w, a.y + w), Vector2(a.x + w, b.y - w)],
+	]
+	for band: Array in bands:
+		_status.draw_polygon(PackedVector2Array(band), PackedColorArray([solid, solid, clear, clear]))
 
 
 func _held_weapon() -> WeaponItem:
@@ -393,7 +443,15 @@ func _draw_status() -> void:
 	var font := UiTheme.FONT
 	var origin := safe.position + Vector2(PAUSE_MARGIN * 2.0 + PAUSE_SIZE, PAUSE_MARGIN + (PAUSE_SIZE - HP_BAR_SIZE.y) * 0.5)
 	var frac := clampf(player.hp / TuningDB.t.max_hp, 0.0, 1.0)
+	var chip := clampf(_chip_hp / TuningDB.t.max_hp, 0.0, 1.0)
+	if not player.is_ko():
+		var low := 0.0
+		if player.hp < TuningDB.t.max_hp * LOW_HP_SHARE:
+			low = LOW_HP_GLOW * (0.5 + 0.5 * sin(Time.get_ticks_msec() / 1000.0 * TAU * 1.2))
+		_draw_edge_glow(Rect2(Vector2.ZERO, get_viewport().get_visible_rect().size), maxf(_hurt, low))
 	_status.draw_rect(Rect2(origin, HP_BAR_SIZE), Color(0, 0, 0, 0.45))
+	if chip > frac:
+		_status.draw_rect(Rect2(origin + Vector2(HP_BAR_SIZE.x * frac, 0), Vector2(HP_BAR_SIZE.x * (chip - frac), HP_BAR_SIZE.y)), Color(1, 1, 1, 0.8))
 	_status.draw_rect(Rect2(origin, Vector2(HP_BAR_SIZE.x * frac, HP_BAR_SIZE.y)), _color(player).lerp(Color(1, 0.35, 0.3), 1.0 - frac))
 	if player.armor > 0.0:
 		var armor_frac := clampf(player.armor / TuningDB.t.max_armor, 0.0, 1.0)

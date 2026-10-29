@@ -3,7 +3,7 @@ class_name NetProtocol
 ## compact form of an InputCommand.
 
 ## Bump on any change to messages or sim state; peers with a different version can't join.
-const VERSION: int = 6
+const VERSION: int = 7
 const GAME_PORT: int = 7777
 const BEACON_PORT: int = 7778
 const MAX_CLIENTS: int = 3

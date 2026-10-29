@@ -104,6 +104,16 @@ func _ready() -> void:
 		Sfx.play(&"kick", at, 0.0, 0.7)
 		_shake(0.4))
 	GameEvents.consumable_used.connect(_on_consumable_used)
+	GameEvents.dashed.connect(func(id: int, dir: Vector2) -> void:
+		var at := _fighter_pos(id)
+		_burst(PUFF, at, -dir, Color(0.75, 0.95, 1.0, 0.6), 10, 380.0, 35.0, 0.1, false)
+		_burst(SPARK, at, -dir, Color(0.6, 0.95, 1.0), 8, 520.0, 25.0, 0.05, true)
+		Sfx.play(&"kick", at, -4.0, 1.6)
+		if id == local_fighter_id:
+			Haptics.pulse(15, 0.35))
+	GameEvents.glanced.connect(func(_id: int, at: Vector2, normal: Vector2) -> void:
+		_burst(SPARK, at, normal, Color(1.0, 0.85, 0.6), 8, 420.0, 70.0, 0.04, true)
+		Sfx.play(&"bullet_wall", at, -10.0, 0.8))
 	GameEvents.wrecking_ball.connect(func(_b: int, _v: int, at: Vector2) -> void:
 		_burst(SPARK, at, Vector2.UP, Color(0.7, 0.95, 1.0), 26, 650.0, 180.0, 0.07, true)
 		Sfx.play(&"hit_heavy", at, 2.0, 0.7)

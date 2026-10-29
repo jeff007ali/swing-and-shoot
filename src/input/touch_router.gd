@@ -43,6 +43,10 @@ var _touch_start_world: Vector2 = Vector2.ZERO
 var _fire_tick: int = -1
 var _kick_window_open: bool = false
 var _kick_window_start: int = 0
+## Rule 6: a touch away from walls fires at once, but a swipe within KICK_WINDOW turns it into an air
+## dash instead (the rope it fired lets go).
+var _dash_window_open: bool = false
+var _dash_window_start: int = 0
 var _steer_touch: int = -1
 var _steer_start: int = 0
 var _steer_screen: Vector2 = Vector2.ZERO
@@ -78,27 +82,44 @@ func touch_down(index: int, screen_pos: Vector2) -> void:
 	_touch_start_world = _to_world(screen_pos)
 	_fire_tick = -1
 	_kick_window_open = false
-	if fighter.has_rope_out() or _pending.rope_fire:
-		# Rule 4: a new touch releases, then fires again if the cooldown allows.
-		_pending.rope_release = true
-		_try_fire(_touch_start_world, _event_tick())
-	elif fighter.is_clinging():
+	_dash_window_open = false
+	if fighter.is_clinging() and not fighter.has_rope_out() and not _pending.rope_fire:
 		# Rule 2: wait a moment to see if this is a kick swipe.
 		_kick_window_open = true
 		_kick_window_start = _event_tick()
-	else:
-		# Rule 1: fire at once.
-		_try_fire(_touch_start_world, _event_tick())
+		return
+	if fighter.has_rope_out() or _pending.rope_fire:
+		# Rule 4: a new touch releases, then fires again if the cooldown allows.
+		_pending.rope_release = true
+	# Rule 1: fire at once. Rule 6: unless it turns out to be a dash swipe.
+	_try_fire(_touch_start_world, _event_tick())
+	_dash_window_open = true
+	_dash_window_start = _event_tick()
 
 
 func touch_move(index: int, screen_pos: Vector2) -> void:
 	if index == _steer_touch:
 		_steer_screen = screen_pos
 		return
-	if index != _rope_touch or not _kick_window_open:
+	if index != _rope_touch:
 		return
 	var swipe := screen_pos - _touch_start_screen
-	if swipe.length() < TuningDB.t.swipe_min_dist:
+	if _dash_window_open:
+		if _event_tick() - _dash_window_start > SimIds.ticks(TuningDB.t.kick_window):
+			_dash_window_open = false
+		elif swipe.length() >= TuningDB.t.dash_swipe_dist:
+			# Rule 6: a dash. The rope this touch fired is called back.
+			_dash_window_open = false
+			if _pending.rope_fire:
+				_pending.rope_fire = false
+			else:
+				_pending.rope_release = true
+			_pending.kick = true
+			_pending.kick_dir = swipe.normalized()
+			_fire_tick = -1
+			_rope_touch = -1
+		return
+	if not _kick_window_open or swipe.length() < TuningDB.t.swipe_min_dist:
 		return
 	_kick_window_open = false
 	_pending.kick = true
@@ -120,6 +141,7 @@ func touch_up(index: int, _screen_pos: Vector2) -> void:
 	if index != _rope_touch:
 		return
 	_rope_touch = -1
+	_dash_window_open = false
 	if _kick_window_open:
 		# Rule 2: a tap while clinging fires a latched rope at the original point.
 		_kick_window_open = false
@@ -148,6 +170,13 @@ func fire_rope_toward(dir: Vector2) -> void:
 func release_rope() -> void:
 	if fighter != null and fighter.has_rope_out():
 		_pending.rope_release = true
+
+
+## Dash (or kick off a wall) along dir: the desktop Shift key.
+func queue_dash(dir: Vector2) -> void:
+	if dir != Vector2.ZERO:
+		_pending.kick = true
+		_pending.kick_dir = dir.normalized()
 
 
 ## KNIFE (melee) button. aim: the direction the player dragged it, or zero for auto-aim.

@@ -5,12 +5,17 @@ extends Node
 ##
 ## Surface modes, picked when the hook attaches:
 ##   REEL  - pulled in toward the hook point (ROPE-01)
-##   ORBIT - swung around the object like a ball on a string, slowly tightening (ROPE-04)
+##   ORBIT - swung around the object like a ball on a string, slowly tightening (ROPE-04). On a wall
+##           or box (a wall swing, D49) it circles the hook point; a quick tap lets go once the flight
+##           has turned WALL_SWING_RELEASE_TURN or starts heading into that wall, so it skims it
 ##   SWING - dragged around by a rotating obstacle (ROPE-05)
 ## Hooking an enemy instead pulls them in (PULL, ROPE-03); hooking a weapon fetches it (FETCH, ROPE-02).
 ## Phase 6: hooking a thrown projectile catches it and whips it back (CATCH, ROPE-06); crossing an
 ## enemy's rope locks both into a tap duel (DUEL, ROPE-07, run by SpecialWeapons). Hooking a
 ## shield holder from the front rips the shield away instead of pulling them.
+
+## A latched wall swing lets go once heading into its wall at this share of GLANCE_MAX_ANGLE.
+const WALL_SWING_RELEASE_SHARE: float = 0.8
 
 var fighter: Fighter
 var state: SimIds.RopeState = SimIds.RopeState.IDLE
@@ -42,6 +47,10 @@ var _pivot_on_center: bool = false
 var _pivot_radius: float = 0.0
 ## Swing: anchor-to-fighter direction in the moving object's local space, so it turns with it.
 var _swing_local_dir: Vector2 = Vector2.RIGHT
+## Wall swing: the flight direction when it began, to measure how far it has turned, and the hooked
+## surface's normal in the object's space.
+var _swing_from: Vector2 = Vector2.ZERO
+var _anchor_normal_local: Vector2 = Vector2.ZERO
 var _retract_ticks_left: int = 0
 var _retract_total: int = 1
 var _retract_from: Vector2 = Vector2.ZERO
@@ -179,6 +188,8 @@ func get_state() -> Dictionary:
 		"pivot_on_center": _pivot_on_center,
 		"pivot_radius": _pivot_radius,
 		"swing_local_dir": _swing_local_dir,
+		"swing_from": _swing_from,
+		"anchor_normal": _anchor_normal_local,
 		"length": length,
 		"attach_tick": attach_tick,
 		"retract_left": _retract_ticks_left,
@@ -205,6 +216,8 @@ func set_state(s: Dictionary) -> void:
 	_pivot_on_center = s["pivot_on_center"]
 	_pivot_radius = s["pivot_radius"]
 	_swing_local_dir = s["swing_local_dir"]
+	_swing_from = s.get("swing_from", Vector2.ZERO)
+	_anchor_normal_local = s.get("anchor_normal", Vector2.ZERO)
 	length = s["length"]
 	attach_tick = s["attach_tick"]
 	_retract_ticks_left = s["retract_left"]
@@ -262,7 +275,7 @@ func _step_flying(tick: int) -> void:
 		hook_pos = point
 		var obj := hit["collider"] as ArenaObject
 		if obj != null and obj.hookable:
-			_attach_surface(tick, obj, point)
+			_attach_surface(tick, obj, point, hit["normal"])
 		else:
 			# Smooth panels (Phase 4) bounce the hook.
 			_start_retract()
@@ -365,17 +378,19 @@ func _hit_item(tick: int, item: WeaponItem, point: Vector2) -> void:
 	fighter.emit_event(&"rope_attached", [fighter.fighter_id, mode, point])
 
 
-func _attach_surface(tick: int, obj: ArenaObject, point: Vector2) -> void:
+func _attach_surface(tick: int, obj: ArenaObject, point: Vector2, normal: Vector2 = Vector2.ZERO) -> void:
 	state = SimIds.RopeState.ATTACHED
 	anchor_object = obj
 	_anchor_local = obj.to_local(point)
+	_anchor_normal_local = obj.global_transform.basis_xform_inv(normal)
 	attach_tick = tick
-	mode = pick_surface_mode(obj, point)
+	mode = pick_surface_mode(obj, point, normal)
 	_pivot_on_center = mode == SimIds.RopeMode.ORBIT and obj.orbit_pivot
 	_pivot_radius = obj.pivot_radius() if _pivot_on_center else 0.0
 	length = fighter.global_position.distance_to(pivot_world())
 	match mode:
 		SimIds.RopeMode.ORBIT:
+			_swing_from = fighter.velocity.normalized()
 			fighter.enter_rope_state(SimIds.FighterState.ORBITING)
 			hook_pos = _orbit_hook_point(pivot_world())
 		SimIds.RopeMode.SWING:
@@ -389,8 +404,10 @@ func _attach_surface(tick: int, obj: ArenaObject, point: Vector2) -> void:
 	fighter.emit_event(&"rope_attached", [fighter.fighter_id, mode, point])
 
 
-## Mode table in §4.6, checked at the moment the hook attaches.
-func pick_surface_mode(obj: ArenaObject, point: Vector2) -> SimIds.RopeMode:
+## Mode table in §4.6, checked at the moment the hook attaches. Walls and boxes use the wall swing
+## limits (D49); round obstacles the orbit ones. normal is the hooked surface's: already flying into
+## that wall more steeply than a glance reels instead, since a swing would only bring it closer.
+func pick_surface_mode(obj: ArenaObject, point: Vector2, normal: Vector2 = Vector2.ZERO) -> SimIds.RopeMode:
 	if obj.is_moving:
 		return SimIds.RopeMode.SWING
 	var t := TuningDB.t
@@ -401,9 +418,20 @@ func pick_surface_mode(obj: ArenaObject, point: Vector2) -> SimIds.RopeMode:
 	var dir := to_anchor.normalized()
 	var tangential := absf(v.cross(dir))
 	var angle := rad_to_deg(absf(v.angle_to(dir)))
-	if tangential >= t.orbit_min_tangent_speed and angle >= t.orbit_min_angle:
-		return SimIds.RopeMode.ORBIT
-	return SimIds.RopeMode.REEL
+	var min_tangent := t.orbit_min_tangent_speed if obj.orbit_pivot else t.wall_swing_min_tangent_speed
+	var min_angle := t.orbit_min_angle if obj.orbit_pivot else t.wall_swing_min_angle
+	if tangential < min_tangent or angle < min_angle:
+		return SimIds.RopeMode.REEL
+	if not obj.orbit_pivot and _into_wall(v, normal):
+		return SimIds.RopeMode.REEL
+	return SimIds.RopeMode.ORBIT
+
+
+## Flying into a surface with this normal more steeply than share x GLANCE_MAX_ANGLE.
+func _into_wall(v: Vector2, normal: Vector2, share: float = 1.0) -> bool:
+	if normal == Vector2.ZERO or v.length_squared() < 0.0001:
+		return false
+	return v.normalized().dot(normal.normalized()) < -sin(deg_to_rad(TuningDB.t.glance_max_angle * share))
 
 
 func _step_attached(tick: int) -> void:
@@ -444,6 +472,9 @@ func _step_reel(tick: int) -> void:
 	tension = clampf(v.dot(dir) / max_speed, 0.0, 1.0)
 	if latched and tick - attach_tick >= SimIds.ticks(t.reel_max_time):
 		release()
+	elif latched and dist <= t.reel_release_dist and v.dot(dir) >= max_speed * 0.5:
+		# Up to speed and nearly there: let go and coast in, free to act.
+		release(false)
 
 
 ## ROPE-03 / ROPE-13: accelerate the target toward the puller's current position (capping its speed
@@ -575,8 +606,16 @@ func _step_orbit(tick: int) -> void:
 		length = new_len
 	hook_pos = _orbit_hook_point(pivot)
 	tension = clampf(absf(vt) / t.reel_max_speed, 0.0, 1.0)
-	if latched and tick - attach_tick >= SimIds.ticks(t.latched_orbit_max_time):
+	if not latched:
+		return
+	if tick - attach_tick >= SimIds.ticks(t.latched_orbit_max_time):
 		release()
+	elif not _pivot_on_center and _swing_from != Vector2.ZERO and fighter.velocity.length_squared() > 1.0:
+		# Wall swing: fling out before the arc comes round into the wall.
+		var normal := anchor_object.global_transform.basis_xform(_anchor_normal_local) if anchor_object != null else Vector2.ZERO
+		# A little shallower than a glance, so the fighter skims the wall when it gets there.
+		if rad_to_deg(absf(_swing_from.angle_to(fighter.velocity))) >= t.wall_swing_release_turn or _into_wall(fighter.velocity, normal, WALL_SWING_RELEASE_SHARE):
+			release()
 
 
 ## ROPE-05: reel in to SWING_MIN_LENGTH, then hold it. The fighter's move (Fighter._move) goes to

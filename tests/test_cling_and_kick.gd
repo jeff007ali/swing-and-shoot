@@ -68,11 +68,3 @@ func test_kick_into_the_surface_is_corrected() -> void:
 	var v := h.player.velocity.normalized()
 	assert_almost_eq(v.dot(Vector2.RIGHT), TuningDB.t.kick_min_normal_dot, 0.001, "pushed out to the minimum angle")
 	assert_lt(v.y, 0.0, "keeps the along-surface part (up)")
-
-
-func test_kick_is_ignored_when_not_clinging() -> void:
-	h.player.teleport(Vector2(700, 900))
-	h.input.at(1).kick = true
-	h.input.at(1).kick_dir = Vector2.RIGHT
-	h.step()
-	assert_eq(h.player.velocity, Vector2.ZERO)

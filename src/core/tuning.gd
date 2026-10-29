@@ -13,9 +13,11 @@ extends Resource
 @export_range(200, 1400, 10) var rope_range: float = 720.0
 @export_range(0, 2, 0.01) var rope_cooldown: float = 0.25
 @export_range(0, 1, 0.01) var rope_retract_time: float = 0.1
-@export_range(0, 12000, 50) var reel_accel: float = 5400.0
-@export_range(100, 4000, 10) var reel_max_speed: float = 1650.0
+@export_range(0, 12000, 50) var reel_accel: float = 4500.0
+@export_range(100, 4000, 10) var reel_max_speed: float = 1550.0
 @export_range(0.2, 6, 0.1) var reel_max_time: float = 2.0
+## A latched reel lets go this close to its hook once it is up to speed, and the fighter coasts in (px).
+@export_range(0, 400, 5) var reel_release_dist: float = 120.0
 
 @export_group("Orbit and swing")
 @export_range(0, 1500, 10) var orbit_min_tangent_speed: float = 260.0
@@ -24,6 +26,13 @@ extends Resource
 @export_range(20, 400, 5) var orbit_min_length: float = 90.0
 @export_range(0.2, 5, 0.1) var latched_orbit_max_time: float = 1.5
 @export_range(1, 2, 0.01) var slingshot_release_bonus: float = 1.10
+## Wall swing (an orbit around a hook on a wall or box): needs less of an angle than a round
+## obstacle's orbit, but more sideways speed.
+@export_range(0, 90, 1) var wall_swing_min_angle: float = 45.0
+@export_range(0, 1500, 10) var wall_swing_min_tangent_speed: float = 350.0
+## A latched wall swing lets go (with the slingshot bonus) once the flight has turned this far
+## (degrees), or sooner once it heads into the wall it hangs on more steeply than GLANCE_MAX_ANGLE.
+@export_range(10, 180, 5) var wall_swing_release_turn: float = 90.0
 @export_range(0, 6, 0.05) var turbine_omega: float = 1.8
 @export_range(20, 400, 5) var swing_min_length: float = 110.0
 @export_range(1, 2, 0.01) var swing_release_bonus: float = 1.15
@@ -45,6 +54,23 @@ extends Resource
 @export_range(0, 1, 0.01) var kick_min_normal_dot: float = 0.2
 ## After letting go of a moving surface (turbine) a fighter can't cling to it again for this long (s).
 @export_range(0, 2, 0.05) var moving_release_grace: float = 0.75
+## Hitting a surface at most this steeply (degrees off the surface) at GLANCE_MIN_SPEED or faster
+## slides along it instead of clinging.
+@export_range(0, 90, 1) var glance_max_angle: float = 30.0
+@export_range(0, 3000, 10) var glance_min_speed: float = 700.0
+## Speed kept by the steepest glance (a parallel brush keeps all of it).
+@export_range(0, 1, 0.01) var glance_keep: float = 0.9
+
+@export_group("Dash")
+## Air dash (a swipe away from walls): at least this fast along the swipe (px/s)...
+@export_range(0, 3000, 10) var dash_speed: float = 750.0
+## ...or this share of the current speed, turned along the swipe, if that is more.
+@export_range(0, 1, 0.01) var dash_keep: float = 0.85
+@export_range(0, 5, 1) var dash_charges: int = 2
+## One charge comes back this long after it was used (s).
+@export_range(0.1, 10, 0.05) var dash_recharge: float = 1.5
+## A swipe this long in open space dashes (reference px; walls use SWIPE_MIN_DIST).
+@export_range(5, 200, 1) var dash_swipe_dist: float = 45.0
 
 @export_group("Touch and aim")
 @export_range(0.05, 1, 0.01) var hold_threshold: float = 0.20

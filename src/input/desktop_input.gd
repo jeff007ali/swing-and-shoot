@@ -1,7 +1,7 @@
 class_name DesktopInput
 extends Node
 ## Development keys (§4.4). The mouse is handled by TouchRouter as emulated touch.
-## Space/J melee and K fire, both aimed at the mouse cursor; F1 debug overlay, R respawn, 1/2/3 bot
+## Space/J melee, K fire and Shift dash (or kick off a wall), all aimed at the mouse cursor; F1 debug overlay, R respawn, 1/2/3 bot
 ## difficulty (0 idle), Esc pause.
 
 signal debug_toggle_requested
@@ -36,6 +36,9 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		KEY_K:
 			if router != null and not get_tree().paused:
 				router.queue_fire(_mouse_aim())
+		KEY_SHIFT:
+			if router != null and not get_tree().paused:
+				router.queue_dash(_mouse_aim())
 		KEY_F1:
 			debug_toggle_requested.emit()
 		KEY_R:

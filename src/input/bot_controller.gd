@@ -9,6 +9,7 @@ extends RefCounted
 ##   1b. Hazards (§6.4): pulled by an open vent or a black hole, or outside the Closing Walls zone:
 ##       rope the anchor that leads most away from the danger.
 ##   2. Being pulled: with escape_chance (once per pull), rope the anchor most away from the puller.
+##   2b. A shot or an enemy hook about to hit: with dodge_chance, air-dash sideways out of its path.
 ##   3. Melee: the player is close and closing, or arriving from the bot's own pull.
 ##   Sight: walls of every kind block it, and the player must stay in sight for acquire_time before
 ##   rules 3b and 4 shoot or rope them. Shots and ropes lead the target by lead_skill of its motion.
@@ -16,12 +17,16 @@ extends RefCounted
 ##       gun from close range. A blade just extends the melee reach. Phase 6 weapons: projectile
 ##       ones are aimed like guns (explosives not point-blank); repulsor, magnet and thruster are
 ##       used when they'd help. A thrusting bot steers at its target; in a rope duel it taps.
+##   3c. A player just out of knife reach and in sight: with chase_dash_chance, air-dash at them,
+##       keeping one dash for dodging.
 ##   4. Rope the player when in range, in sight and pullable (aggression attempts per second).
 ##   4b. Unarmed: rope a floating weapon in reach (weapon_interest per perception). Armed or not, rope
 ##       a pickup in reach that would help (health when hurt, armor when low, haste, power).
 ##   5. Clinging too long, or drifting slowly (or, far from a mode goal (§6.5), clinging at all or
 ##      flying the wrong way): grapple to an anchor that keeps a good distance and
-##      can see the player. While the player is ropeable a clinging bot stays put instead, so rule 4
+##      can see the player. With no mode goal and the nearest enemy over HUNT_DISTANCE away, the bot
+##      hunts: the enemy is its goal (a big arena's anchors alone can trap it in a two-spot loop
+##      behind an obstacle), and when no hook gets it closer it air-dashes that way. While the player is ropeable a clinging bot stays put instead, so rule 4
 ##      keeps getting its chances (tuning after the M5 measurements; §4.9 roams regardless).
 ##   6. Otherwise keep doing the current action.
 
@@ -32,6 +37,12 @@ const GOAL_REACHED: float = 260.0
 ## Phase 6 weapons a bot aims and fires like a gun, and the ones it won't fire at close range.
 const AIMED_SPECIALS: Array[StringName] = [&"rocket", &"laser", &"boomerang", &"harpoon", &"freeze", &"sticky", &"gravity", &"black_hole_bomb", &"tether_mine", &"prox_mine", &"tether_rope"]
 const POINT_BLANK_UNSAFE: Array[StringName] = [&"rocket", &"sticky", &"black_hole_bomb", &"gravity", &"prox_mine"]
+## Rule 2b looks this far ahead for shots and hooks (s), and counts one passing this close (px)
+## beyond the two radii as a hit.
+const DODGE_LOOKAHEAD: float = 0.35
+const DODGE_MARGIN: float = 14.0
+## Rule 3c: dash at a player at most this far away (px).
+const CHASE_DASH_RANGE: float = 420.0
 ## Rope-duel taps per second per point of fire_rate.
 const DUEL_TAPS_PER_FIRE: float = 2.5
 ## A goal anchor has to bring the bot at least this much closer (px).
@@ -44,6 +55,8 @@ const BLOCK_TIME: float = 5.0
 const GOAL_RAYS: int = 16
 ## Far from its goal, a bot leaves a wall after this long (s).
 const GOAL_CLING_TIME: float = 0.3
+## Rule 5: an enemy farther than this (px) is hunted like a mode goal.
+const HUNT_DISTANCE: float = 900.0
 
 var fighter: Fighter
 var sim: MatchSim
@@ -127,6 +140,13 @@ func _think(tick: int, cmd: InputCommand) -> void:
 				_fire(cmd, away, &"escape")
 				return
 
+	# Rule 2b.
+	if fighter.can_dash(tick):
+		var away := _dodge_dir()
+		if away != Vector2.ZERO and sim.rng.randf() < profile.dodge_chance:
+			_dash(cmd, away, &"dodge")
+			return
+
 	# Rule 3.
 	if target != null:
 		if fighter.rope.pull_target == target:
@@ -165,6 +185,14 @@ func _think(tick: int, cmd: InputCommand) -> void:
 				_set_intent(&"shoot", target.global_position)
 				return
 
+	# Rule 3c.
+	if target != null and acquired and fighter.dash_charges >= TuningDB.t.dash_charges and fighter.can_dash(tick) and fighter.can_melee(tick):
+		var gap := target.global_position - fighter.global_position
+		if gap.length() > Melee.reach(fighter, t) + profile.melee_trigger_margin and gap.length() <= CHASE_DASH_RANGE:
+			if sim.rng.randf() < profile.chase_dash_chance:
+				_dash(cmd, gap + target.velocity * 0.15 * profile.lead_skill, &"chase")
+				return
+
 	# Rule 4.
 	var ropeable := target != null and _ropeable(target, tick)
 	if ropeable and acquired and fighter.can_fire_rope(tick):
@@ -188,6 +216,9 @@ func _think(tick: int, cmd: InputCommand) -> void:
 	# Rule 5. A clinging bot that has the player in its sights waits for its next rule 4 roll. In a
 	# mode with a goal (the King of the Swing zone, away from the Hot Potato bomb) it heads there.
 	var goal := sim.mode.bot_goal(fighter, tick) if sim.mode != null else Vector2.INF
+	var hunting := goal == Vector2.INF and target != null and fighter.global_position.distance_to(target.global_position) > HUNT_DISTANCE
+	if hunting:
+		goal = target.global_position
 	var far := goal != Vector2.INF and fighter.global_position.distance_to(goal) > GOAL_REACHED
 	var clung_ticks := SimIds.ticks(t.cling_time) - fighter.cling_ticks_left
 	var cling_long := fighter.is_clinging() and clung_ticks >= SimIds.ticks(profile.idle_cling_time)
@@ -209,8 +240,13 @@ func _think(tick: int, cmd: InputCommand) -> void:
 		if anchor != Vector2.INF:
 			_grapple_from = fighter.global_position
 			_grapple_to = anchor
-			_fire(cmd, anchor, &"grapple")
+			_fire(cmd, anchor, &"hunt" if hunting else &"grapple")
 			return
+	if hunting and fighter.state == SimIds.FighterState.FREE and not fighter.rope.is_out() and fighter.dash_charges >= TuningDB.t.dash_charges:
+		# Open space with nothing to hook toward the enemy: dash that way, keeping one dash to dodge.
+		var to_goal := goal - fighter.global_position
+		if fighter.velocity.normalized().dot(to_goal.normalized()) < 0.7 or fighter.velocity.length() < profile.slow_speed:
+			_dash(cmd, to_goal, &"hunt")
 
 	# Rule 6: latched ropes finish on their own.
 
@@ -239,6 +275,51 @@ func _use_special(held: WeaponItem, target: Fighter, tick: int, cmd: InputComman
 		cmd.fire = true
 		_set_intent(&"use_weapon", target.global_position)
 	return use
+
+
+## A kick command away from walls is an air dash.
+func _dash(cmd: InputCommand, dir: Vector2, why: StringName) -> void:
+	cmd.kick = true
+	cmd.kick_dir = dir.normalized()
+	_set_intent(why, fighter.global_position + cmd.kick_dir * 200.0)
+
+
+## Rule 2b: sideways out of the path of the first enemy shot or hook that would hit within
+## DODGE_LOOKAHEAD, or zero.
+func _dodge_dir() -> Vector2:
+	var r := TuningDB.t.fighter_radius
+	for p in sim.weapons.projectiles:
+		var shooter := sim.get_fighter(p.owner_id)
+		if shooter == null or not sim.are_enemies(fighter, shooter) or p.extra.has("caught_by") or p.extra.has("stuck"):
+			continue
+		var side := _threat_side(p.pos, p.vel - fighter.velocity, r + p.radius + DODGE_MARGIN)
+		if side != Vector2.ZERO and _in_sight(p.pos):
+			return side
+	for other in sim.fighters:
+		if other == fighter or other.is_ko() or not sim.are_enemies(fighter, other) or other.rope.state != SimIds.RopeState.FLYING:
+			continue
+		var hook_vel := (other.rope.hook_pos - other.rope.prev_hook_pos) * SimIds.TICK_RATE
+		var side := _threat_side(other.rope.hook_pos, hook_vel - fighter.velocity, r + DODGE_MARGIN)
+		if side != Vector2.ZERO:
+			return side
+	return Vector2.ZERO
+
+
+## If something at pos moving at rel_vel (relative to the bot) passes within reach of the bot in the
+## next DODGE_LOOKAHEAD, the sideways direction away from its line; else zero.
+func _threat_side(pos: Vector2, rel_vel: Vector2, reach: float) -> Vector2:
+	var speed_sq := rel_vel.length_squared()
+	if speed_sq < 1.0:
+		return Vector2.ZERO
+	var to_me := fighter.global_position - pos
+	var t_close := to_me.dot(rel_vel) / speed_sq
+	if t_close <= 0.0 or t_close > DODGE_LOOKAHEAD:
+		return Vector2.ZERO
+	var miss := to_me - rel_vel * t_close
+	if miss.length() > reach:
+		return Vector2.ZERO
+	var side := rel_vel.orthogonal().normalized()
+	return side if miss.dot(side) >= 0.0 else -side
 
 
 func _fire(cmd: InputCommand, point: Vector2, why: StringName) -> void:
